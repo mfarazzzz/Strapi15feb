@@ -22,19 +22,19 @@ export default {
       method: 'POST',
       path: '/pages',
       handler: 'page.create',
-      config: { auth: {} },
+      config: { auth: {}, policies: ['global::cms-role'] },
     },
     {
       method: 'PATCH',
       path: '/pages/:id',
       handler: 'page.update',
-      config: { auth: {} },
+      config: { auth: {}, policies: ['global::cms-role'] },
     },
     {
       method: 'DELETE',
       path: '/pages/:id',
       handler: 'page.delete',
-      config: { auth: {} },
+      config: { auth: {}, policies: ['global::cms-role'] },
     },
   ],
 };

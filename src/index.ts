@@ -22,6 +22,14 @@ export default {
       return Number.isFinite(n) ? n : 0;
     };
 
+    const isProduction = String(process.env.NODE_ENV || '')
+      .trim()
+      .toLowerCase() === 'production';
+    const seedFlag = String(process.env.STRAPI_SEED ?? process.env.SEED ?? '')
+      .trim()
+      .toLowerCase();
+    const allowSeed = !isProduction || seedFlag === '1' || seedFlag === 'true' || seedFlag === 'yes';
+
     const countPermissionLinks = async (roleId: number): Promise<number> => {
       const row = await strapi.db
         .connection('up_permissions_role_lnk')
@@ -108,16 +116,34 @@ export default {
       });
     };
 
-    await ensureRole('admin', 'Admin', 'Full access within the Admin CMS.');
-    await ensureRole('editor', 'Editor', 'Can edit and publish content.');
-    await ensureRole('author', 'Author', 'Can create and edit own content.');
-    await ensureRole('contributor', 'Contributor', 'Can submit drafts for review.');
+    if (allowSeed) {
+      await ensureRole('admin', 'Admin', 'Full access within the Admin CMS.');
+      await ensureRole('editor', 'Editor', 'Can edit and publish content.');
+      await ensureRole('author', 'Author', 'Can create and edit own content.');
+      await ensureRole('contributor', 'Contributor', 'Can submit drafts for review.');
 
-    await syncDuplicateRolesByType('admin');
-    await syncDuplicateRolesByType('editor');
-    await syncDuplicateRolesByType('author');
-    await syncDuplicateRolesByType('contributor');
-    await ensureAdminUserPermissions();
+      await syncDuplicateRolesByType('admin');
+      await syncDuplicateRolesByType('editor');
+      await syncDuplicateRolesByType('author');
+      await syncDuplicateRolesByType('contributor');
+      await ensureAdminUserPermissions();
+    }
+
+    const allowPublicRegistration = (() => {
+      const raw = String(process.env.ALLOW_PUBLIC_REGISTRATION ?? '').trim().toLowerCase();
+      return raw === '1' || raw === 'true' || raw === 'yes';
+    })();
+    if (isProduction && !allowPublicRegistration) {
+      try {
+        const store = strapi.store({ type: 'plugin', name: 'users-permissions' });
+        const advanced = await store.get({ key: 'advanced' });
+        if (advanced && typeof advanced === 'object' && (advanced as any).allow_register === true) {
+          await store.set({ key: 'advanced', value: { ...(advanced as any), allow_register: false } });
+        }
+      } catch {
+        void 0;
+      }
+    }
 
     const bootstrapEmail = process.env.BOOTSTRAP_ADMIN_EMAIL;
     const bootstrapPassword = process.env.BOOTSTRAP_ADMIN_PASSWORD;
@@ -163,6 +189,8 @@ export default {
         }
       }
     }
+
+    if (!allowSeed) return;
 
     const seedCategories = [
       {

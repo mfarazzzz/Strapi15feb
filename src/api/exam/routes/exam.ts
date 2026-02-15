@@ -28,19 +28,19 @@ export default {
       method: 'POST',
       path: '/exams',
       handler: 'exam.create',
-      config: { auth: {} },
+      config: { auth: {}, policies: ['global::cms-role'] },
     },
     {
       method: 'PATCH',
       path: '/exams/:id',
       handler: 'exam.update',
-      config: { auth: {} },
+      config: { auth: {}, policies: ['global::cms-role'] },
     },
     {
       method: 'DELETE',
       path: '/exams/:id',
       handler: 'exam.delete',
-      config: { auth: {} },
+      config: { auth: {}, policies: ['global::cms-role'] },
     },
   ],
 };

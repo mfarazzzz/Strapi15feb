@@ -1,20 +1,21 @@
-export default ({ env }) => [
+export default ({ env }) => {
+  const isProduction = String(env('NODE_ENV', '')).trim().toLowerCase() === 'production';
+  const configuredOrigins = env.array('CORS_ORIGINS', []);
+  const origins = (Array.isArray(configuredOrigins) ? configuredOrigins : [])
+    .map((v) => String(v || '').trim())
+    .filter(Boolean);
+  const safeOrigins = isProduction ? origins.filter((o) => o !== '*') : origins;
+
+  return [
   'strapi::logger',
   'strapi::errors',
   'strapi::security',
   {
     name: 'strapi::cors',
     config: {
-      origin: env.array('CORS_ORIGINS', [
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-        'http://localhost:3001',
-        'http://127.0.0.1:3001',
-        'http://localhost:3002',
-        'http://127.0.0.1:3002',
-      ]),
+      origin: safeOrigins,
       credentials: true,
-      headers: '*',
+      headers: env.array('CORS_HEADERS', ['Content-Type', 'Authorization', 'Origin', 'Accept']),
     },
   },
   'strapi::poweredBy',
@@ -22,9 +23,9 @@ export default ({ env }) => [
   {
     name: 'strapi::body',
     config: {
-      formLimit: env('FORM_LIMIT', '50mb'),
-      jsonLimit: env('JSON_LIMIT', '50mb'),
-      textLimit: env('TEXT_LIMIT', '50mb'),
+      formLimit: env('FORM_LIMIT', isProduction ? '25mb' : '50mb'),
+      jsonLimit: env('JSON_LIMIT', isProduction ? '10mb' : '50mb'),
+      textLimit: env('TEXT_LIMIT', isProduction ? '10mb' : '50mb'),
       formidable: {
         maxFileSize: env.int('UPLOAD_SIZE_LIMIT', 50 * 1024 * 1024),
       },
@@ -33,4 +34,5 @@ export default ({ env }) => [
   'strapi::session',
   'strapi::favicon',
   'strapi::public',
-];
+  ];
+};

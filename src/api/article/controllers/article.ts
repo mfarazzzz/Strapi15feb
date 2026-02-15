@@ -257,10 +257,10 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       return `${proto}://${forwardedHostWithPort}`.replace(/\/+$/, '');
     }
 
-    const configuredHost = (strapi.config.get('server.host') as string | undefined) || 'localhost';
+    const configuredHost = (strapi.config.get('server.host') as string | undefined) || '127.0.0.1';
     const configuredPort = (strapi.config.get('server.port') as number | undefined) || 1337;
-    const host = configuredHost === '0.0.0.0' ? 'localhost' : configuredHost;
-    return `http://${host}:${configuredPort}`;
+    const host = configuredHost === '0.0.0.0' ? '127.0.0.1' : configuredHost;
+    return `${proto}://${host}:${configuredPort}`;
   };
 
   const extractData = (body: any) => {

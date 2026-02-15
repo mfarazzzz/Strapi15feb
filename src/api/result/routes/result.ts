@@ -28,19 +28,19 @@ export default {
       method: 'POST',
       path: '/results',
       handler: 'result.create',
-      config: { auth: {} },
+      config: { auth: {}, policies: ['global::cms-role'] },
     },
     {
       method: 'PATCH',
       path: '/results/:id',
       handler: 'result.update',
-      config: { auth: {} },
+      config: { auth: {}, policies: ['global::cms-role'] },
     },
     {
       method: 'DELETE',
       path: '/results/:id',
       handler: 'result.delete',
-      config: { auth: {} },
+      config: { auth: {}, policies: ['global::cms-role'] },
     },
   ],
 };

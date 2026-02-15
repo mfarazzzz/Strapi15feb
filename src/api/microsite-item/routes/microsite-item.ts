@@ -22,19 +22,19 @@ export default {
       method: 'POST',
       path: '/microsite-items',
       handler: 'microsite-item.create',
-      config: { auth: {} },
+      config: { auth: {}, policies: ['global::cms-role'] },
     },
     {
       method: 'PATCH',
       path: '/microsite-items/:id',
       handler: 'microsite-item.update',
-      config: { auth: {} },
+      config: { auth: {}, policies: ['global::cms-role'] },
     },
     {
       method: 'DELETE',
       path: '/microsite-items/:id',
       handler: 'microsite-item.delete',
-      config: { auth: {} },
+      config: { auth: {}, policies: ['global::cms-role'] },
     },
   ],
 };

@@ -10,7 +10,7 @@ export default {
       method: 'PATCH',
       path: '/settings',
       handler: 'sitesetting.updateSettings',
-      config: { auth: {} },
+      config: { auth: {}, policies: ['global::cms-role'] },
     },
   ],
 };

@@ -16,19 +16,19 @@ export default {
       method: 'POST',
       path: '/mediaitems',
       handler: 'mediaitem.create',
-      config: { auth: {} },
+      config: { auth: {}, policies: ['global::cms-role'] },
     },
     {
       method: 'PATCH',
       path: '/mediaitems/:id',
       handler: 'mediaitem.update',
-      config: { auth: {} },
+      config: { auth: {}, policies: ['global::cms-role'] },
     },
     {
       method: 'DELETE',
       path: '/mediaitems/:id',
       handler: 'mediaitem.delete',
-      config: { auth: {} },
+      config: { auth: {}, policies: ['global::cms-role'] },
     },
   ],
 };
