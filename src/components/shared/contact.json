@@ -1,0 +1,25 @@
+{
+  "collectionName": "components_shared_contacts",
+  "info": {
+    "displayName": "Contact",
+    "icon": "phone"
+  },
+  "options": {},
+  "attributes": {
+    "phone": {
+      "type": "string"
+    },
+    "alternatePhone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "email"
+    },
+    "website": {
+      "type": "string"
+    },
+    "whatsapp": {
+      "type": "string"
+    }
+  }
+}

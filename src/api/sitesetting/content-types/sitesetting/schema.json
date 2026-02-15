@@ -1,0 +1,82 @@
+{
+  "kind": "singleType",
+  "collectionName": "site_settings_single",
+  "info": {
+    "singularName": "sitesetting",
+    "pluralName": "sitesettings",
+    "displayName": "Site Setting"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "siteName": {
+      "type": "string",
+      "required": true,
+      "default": "Rampur News"
+    },
+    "siteNameHindi": {
+      "type": "string",
+      "required": true,
+      "default": "रामपुर न्यूज़"
+    },
+    "tagline": {
+      "type": "string"
+    },
+    "taglineHindi": {
+      "type": "string"
+    },
+    "logo": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "favicon": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "socialLinks": {
+      "type": "component",
+      "repeatable": false,
+      "component": "shared.sociallinks"
+    },
+    "contactEmail": {
+      "type": "email"
+    },
+    "contactPhone": {
+      "type": "string"
+    },
+    "address": {
+      "type": "component",
+      "repeatable": false,
+      "component": "shared.address"
+    },
+    "defaultAuthorRole": {
+      "type": "enumeration",
+      "enum": [
+        "admin",
+        "editor",
+        "author",
+        "contributor"
+      ],
+      "default": "author"
+    },
+    "googleAnalyticsId": {
+      "type": "string"
+    },
+    "googleAdsenseId": {
+      "type": "string"
+    },
+    "footerText": {
+      "type": "richtext"
+    },
+    "footerTextHindi": {
+      "type": "richtext"
+    }
+  }
+}

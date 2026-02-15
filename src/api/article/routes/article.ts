@@ -1,0 +1,88 @@
+export default {
+  routes: [
+    {
+      method: 'GET',
+      path: '/articles/admin',
+      handler: 'article.adminFind',
+      config: { auth: {}, policies: ['global::cms-role'] },
+    },
+    {
+      method: 'GET',
+      path: '/articles/admin/slug/:slug',
+      handler: 'article.adminFindBySlug',
+      config: { auth: {}, policies: ['global::cms-role'] },
+    },
+    {
+      method: 'GET',
+      path: '/articles/admin/:id',
+      handler: 'article.adminFindOne',
+      config: { auth: {}, policies: ['global::cms-role'] },
+    },
+    {
+      method: 'GET',
+      path: '/articles',
+      handler: 'article.find',
+      config: { auth: false },
+    },
+    {
+      method: 'GET',
+      path: '/articles/featured',
+      handler: 'article.featured',
+      config: { auth: false },
+    },
+    {
+      method: 'GET',
+      path: '/articles/breaking',
+      handler: 'article.breaking',
+      config: { auth: false },
+    },
+    {
+      method: 'GET',
+      path: '/articles/trending',
+      handler: 'article.trending',
+      config: { auth: false },
+    },
+    {
+      method: 'GET',
+      path: '/articles/bycategory/:slug',
+      handler: 'article.byCategory',
+      config: { auth: false },
+    },
+    {
+      method: 'GET',
+      path: '/articles/search',
+      handler: 'article.search',
+      config: { auth: false },
+    },
+    {
+      method: 'GET',
+      path: '/articles/slug/:slug',
+      handler: 'article.findBySlug',
+      config: { auth: false },
+    },
+    {
+      method: 'GET',
+      path: '/articles/:id',
+      handler: 'article.findOne',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
+      path: '/articles',
+      handler: 'article.create',
+      config: { auth: {}, policies: ['global::cms-role'] },
+    },
+    {
+      method: 'PATCH',
+      path: '/articles/:id',
+      handler: 'article.update',
+      config: { auth: {}, policies: ['global::cms-role'] },
+    },
+    {
+      method: 'DELETE',
+      path: '/articles/:id',
+      handler: 'article.delete',
+      config: { auth: {}, policies: ['global::cms-role'] },
+    },
+  ],
+};

@@ -1,0 +1,126 @@
+{
+  "kind": "collectionType",
+  "collectionName": "events",
+  "info": {
+    "singularName": "event",
+    "pluralName": "events",
+    "displayName": "Event"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "indexes": [
+    {
+      "name": "events_slug_idx",
+      "columns": [
+        "slug"
+      ]
+    },
+    {
+      "name": "events_startDate_idx",
+      "columns": [
+        "start_date"
+      ]
+    },
+    {
+      "name": "events_category_idx",
+      "columns": [
+        "category"
+      ]
+    },
+    {
+      "name": "events_featured_idx",
+      "columns": [
+        "is_featured"
+      ]
+    }
+  ],
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "titleHindi": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "title",
+      "unique": true
+    },
+    "startDate": {
+      "type": "datetime",
+      "required": true
+    },
+    "endDate": {
+      "type": "datetime"
+    },
+    "venue": {
+      "type": "string"
+    },
+    "venueHindi": {
+      "type": "string"
+    },
+    "address": {
+      "type": "component",
+      "repeatable": false,
+      "component": "shared.address"
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "cultural",
+        "religious",
+        "sports",
+        "educational",
+        "festival",
+        "government"
+      ]
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "descriptionHindi": {
+      "type": "richtext"
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "gallery": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "ticketPrice": {
+      "type": "string"
+    },
+    "registrationLink": {
+      "type": "string"
+    },
+    "organizer": {
+      "type": "string"
+    },
+    "organizerContact": {
+      "type": "string"
+    },
+    "isFeatured": {
+      "type": "boolean"
+    },
+    "isFree": {
+      "type": "boolean"
+    },
+    "seo": {
+      "type": "component",
+      "repeatable": false,
+      "component": "shared.seo"
+    }
+  }
+}

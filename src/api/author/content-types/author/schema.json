@@ -1,0 +1,70 @@
+{
+  "kind": "collectionType",
+  "collectionName": "authors",
+  "info": {
+    "singularName": "author",
+    "pluralName": "authors",
+    "displayName": "Author"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "indexes": [
+    {
+      "name": "authors_email_idx",
+      "columns": [
+        "email"
+      ]
+    }
+  ],
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 120
+    },
+    "nameHindi": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "email": {
+      "type": "email",
+      "required": true,
+      "unique": true
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "avatar": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "bio": {
+      "type": "richtext"
+    },
+    "bioHindi": {
+      "type": "richtext"
+    },
+    "role": {
+      "type": "enumeration",
+      "enum": [
+        "admin",
+        "editor",
+        "author",
+        "contributor"
+      ],
+      "default": "author"
+    },
+    "articles": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::article.article",
+      "mappedBy": "author"
+    }
+  }
+}

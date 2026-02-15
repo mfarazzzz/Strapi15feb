@@ -1,0 +1,122 @@
+{
+  "kind": "collectionType",
+  "collectionName": "results",
+  "info": {
+    "singularName": "result",
+    "pluralName": "results",
+    "displayName": "Result"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "indexes": [
+    {
+      "name": "results_slug_idx",
+      "columns": [
+        "slug"
+      ]
+    },
+    {
+      "name": "results_resultDate_idx",
+      "columns": [
+        "result_date"
+      ]
+    },
+    {
+      "name": "results_status_idx",
+      "columns": [
+        "status"
+      ]
+    },
+    {
+      "name": "results_featured_idx",
+      "columns": [
+        "is_featured"
+      ]
+    }
+  ],
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "titleHindi": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "title",
+      "unique": true
+    },
+    "resultDate": {
+      "type": "date",
+      "required": true
+    },
+    "expectedDate": {
+      "type": "date"
+    },
+    "organization": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "organizationHindi": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "board",
+        "entrance",
+        "government",
+        "university",
+        "competitive"
+      ]
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "descriptionHindi": {
+      "type": "richtext"
+    },
+    "resultLink": {
+      "type": "string"
+    },
+    "alternateLinks": {
+      "type": "json"
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "totalCandidates": {
+      "type": "integer"
+    },
+    "passPercentage": {
+      "type": "decimal"
+    },
+    "cutoffMarks": {
+      "type": "string"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "declared",
+        "expected",
+        "upcoming"
+      ]
+    },
+    "isNew": {
+      "type": "boolean"
+    },
+    "isFeatured": {
+      "type": "boolean"
+    }
+  }
+}

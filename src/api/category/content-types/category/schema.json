@@ -1,0 +1,74 @@
+{
+  "kind": "collectionType",
+  "collectionName": "categories",
+  "info": {
+    "singularName": "category",
+    "pluralName": "categories",
+    "displayName": "Category"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "indexes": [
+    {
+      "name": "categories_slug_idx",
+      "columns": [
+        "slug"
+      ]
+    },
+    {
+      "name": "categories_path_idx",
+      "columns": [
+        "path"
+      ]
+    },
+    {
+      "name": "categories_order_idx",
+      "columns": [
+        "order"
+      ]
+    }
+  ],
+  "attributes": {
+    "slug": {
+      "type": "uid",
+      "targetField": "titleEnglish",
+      "unique": true
+    },
+    "titleHindi": {
+      "type": "string",
+      "required": true,
+      "maxLength": 120
+    },
+    "titleEnglish": {
+      "type": "string",
+      "required": true,
+      "maxLength": 120
+    },
+    "description": {
+      "type": "text"
+    },
+    "descriptionHindi": {
+      "type": "text"
+    },
+    "path": {
+      "type": "string",
+      "required": true
+    },
+    "order": {
+      "type": "integer",
+      "default": 0
+    },
+    "parent": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category"
+    },
+    "articles": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::article.article",
+      "mappedBy": "category"
+    }
+  }
+}

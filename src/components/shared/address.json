@@ -1,0 +1,43 @@
+{
+  "collectionName": "components_shared_addresses",
+  "info": {
+    "displayName": "Address",
+    "icon": "pinMap"
+  },
+  "options": {},
+  "attributes": {
+    "street": {
+      "type": "string"
+    },
+    "streetHindi": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string",
+      "required": true
+    },
+    "cityHindi": {
+      "type": "string"
+    },
+    "district": {
+      "type": "string"
+    },
+    "districtHindi": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string",
+      "default": "Uttar Pradesh"
+    },
+    "stateHindi": {
+      "type": "string",
+      "default": "उत्तर प्रदेश"
+    },
+    "pincode": {
+      "type": "string"
+    },
+    "coordinates": {
+      "type": "json"
+    }
+  }
+}

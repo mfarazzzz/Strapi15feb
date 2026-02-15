@@ -1,0 +1,107 @@
+{
+  "kind": "collectionType",
+  "collectionName": "restaurants",
+  "info": {
+    "singularName": "restaurant",
+    "pluralName": "restaurants",
+    "displayName": "Restaurant"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "indexes": [
+    {
+      "name": "restaurants_slug_idx",
+      "columns": [
+        "slug"
+      ]
+    },
+    {
+      "name": "restaurants_featured_idx",
+      "columns": [
+        "is_featured"
+      ]
+    }
+  ],
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "nameHindi": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "name",
+      "unique": true
+    },
+    "address": {
+      "type": "component",
+      "repeatable": false,
+      "component": "shared.address"
+    },
+    "contact": {
+      "type": "component",
+      "repeatable": false,
+      "component": "shared.contact"
+    },
+    "cuisine": {
+      "type": "json"
+    },
+    "priceRange": {
+      "type": "enumeration",
+      "enum": [
+        "budget",
+        "moderate",
+        "premium",
+        "luxury"
+      ]
+    },
+    "rating": {
+      "type": "decimal"
+    },
+    "reviewCount": {
+      "type": "integer"
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "descriptionHindi": {
+      "type": "richtext"
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "gallery": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "openingHours": {
+      "type": "json"
+    },
+    "features": {
+      "type": "json"
+    },
+    "isVerified": {
+      "type": "boolean"
+    },
+    "isFeatured": {
+      "type": "boolean"
+    },
+    "seo": {
+      "type": "component",
+      "repeatable": false,
+      "component": "shared.seo"
+    }
+  }
+}

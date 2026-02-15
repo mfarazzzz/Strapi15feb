@@ -1,0 +1,156 @@
+{
+  "kind": "collectionType",
+  "collectionName": "articles",
+  "info": {
+    "singularName": "article",
+    "pluralName": "articles",
+    "displayName": "Article"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "indexes": [
+    {
+      "name": "articles_slug_idx",
+      "columns": [
+        "slug"
+      ]
+    },
+    {
+      "name": "articles_featured_idx",
+      "columns": [
+        "is_featured"
+      ]
+    },
+    {
+      "name": "articles_breaking_idx",
+      "columns": [
+        "is_breaking"
+      ]
+    },
+    {
+      "name": "articles_views_idx",
+      "columns": [
+        "views"
+      ]
+    },
+    {
+      "name": "articles_scheduledAt_idx",
+      "columns": [
+        "scheduled_at"
+      ]
+    }
+  ],
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "titleHindi": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "title",
+      "required": true,
+      "unique": true
+    },
+    "excerpt": {
+      "type": "text"
+    },
+    "excerptHindi": {
+      "type": "text"
+    },
+    "content": {
+      "type": "richtext",
+      "required": true
+    },
+    "contentHindi": {
+      "type": "richtext"
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "readTime": {
+      "type": "string",
+      "maxLength": 30
+    },
+    "videoUrl": {
+      "type": "string"
+    },
+    "isFeatured": {
+      "type": "boolean",
+      "default": false
+    },
+    "isBreaking": {
+      "type": "boolean",
+      "default": false
+    },
+    "views": {
+      "type": "integer",
+      "default": 0
+    },
+    "seoTitle": {
+      "type": "string",
+      "maxLength": 60
+    },
+    "seoDescription": {
+      "type": "text",
+      "maxLength": 160
+    },
+    "seoOverride": {
+      "type": "boolean",
+      "default": false
+    },
+    "canonicalUrl": {
+      "type": "string"
+    },
+    "newsKeywords": {
+      "type": "text"
+    },
+    "schemaJson": {
+      "type": "json"
+    },
+    "videoType": {
+      "type": "enumeration",
+      "enum": [
+        "youtube",
+        "upload",
+        "none"
+      ],
+      "default": "none"
+    },
+    "videoTitle": {
+      "type": "string"
+    },
+    "scheduledAt": {
+      "type": "datetime"
+    },
+    "tags": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::tag.tag",
+      "inversedBy": "articles"
+    },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category",
+      "inversedBy": "articles",
+      "required": true
+    },
+    "author": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::author.author",
+      "inversedBy": "articles",
+      "required": true
+    }
+  }
+}

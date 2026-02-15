@@ -1,0 +1,158 @@
+{
+  "kind": "collectionType",
+  "collectionName": "institutions",
+  "info": {
+    "singularName": "institution",
+    "pluralName": "institutions",
+    "displayName": "Institution"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "indexes": [
+    {
+      "name": "institutions_slug_idx",
+      "columns": [
+        "slug"
+      ]
+    },
+    {
+      "name": "institutions_type_idx",
+      "columns": [
+        "type"
+      ]
+    },
+    {
+      "name": "institutions_featured_idx",
+      "columns": [
+        "is_featured"
+      ]
+    }
+  ],
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "nameHindi": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "name",
+      "unique": true
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "college",
+        "school",
+        "university",
+        "coaching",
+        "vocational",
+        "iti"
+      ]
+    },
+    "address": {
+      "type": "component",
+      "repeatable": false,
+      "component": "shared.address"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "email"
+    },
+    "website": {
+      "type": "string"
+    },
+    "establishedYear": {
+      "type": "integer"
+    },
+    "affiliation": {
+      "type": "string"
+    },
+    "affiliationHindi": {
+      "type": "string"
+    },
+    "courses": {
+      "type": "json"
+    },
+    "coursesHindi": {
+      "type": "json"
+    },
+    "fees": {
+      "type": "string"
+    },
+    "admissionProcess": {
+      "type": "richtext"
+    },
+    "admissionProcessHindi": {
+      "type": "richtext"
+    },
+    "examsAccepted": {
+      "type": "json"
+    },
+    "facilities": {
+      "type": "json"
+    },
+    "facilitiesHindi": {
+      "type": "json"
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "gallery": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "rating": {
+      "type": "decimal",
+      "min": 0,
+      "max": 5
+    },
+    "reviewCount": {
+      "type": "integer"
+    },
+    "description": {
+      "type": "richtext",
+      "required": true
+    },
+    "descriptionHindi": {
+      "type": "richtext"
+    },
+    "about": {
+      "type": "richtext"
+    },
+    "aboutHindi": {
+      "type": "richtext"
+    },
+    "isVerified": {
+      "type": "boolean"
+    },
+    "isFeatured": {
+      "type": "boolean"
+    },
+    "contactPerson": {
+      "type": "string"
+    },
+    "contactPersonHindi": {
+      "type": "string"
+    },
+    "seo": {
+      "type": "component",
+      "repeatable": false,
+      "component": "shared.seo"
+    }
+  }
+}

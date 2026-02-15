@@ -1,0 +1,37 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mediaitems",
+  "info": {
+    "singularName": "mediaitem",
+    "pluralName": "mediaitems",
+    "displayName": "MediaItem"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "altText": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "file": {
+      "type": "media",
+      "multiple": false,
+      "required": true
+    },
+    "caption": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "uploadedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::author.author"
+    }
+  }
+}

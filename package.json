@@ -1,0 +1,47 @@
+{
+  "name": "my-strapi-project",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A Strapi application",
+  "scripts": {
+    "build": "strapi build",
+    "console": "strapi console",
+    "deploy": "strapi deploy",
+    "dev": "strapi develop",
+    "develop": "strapi develop",
+    "start": "strapi start",
+    "strapi": "strapi",
+    "upgrade": "npx --yes @strapi/upgrade latest --yes",
+    "upgrade:dry": "npx --yes @strapi/upgrade latest --dry --yes"
+  },
+  "dependencies": {
+    "@strapi/plugin-cloud": "^5.33.4",
+    "@strapi/plugin-users-permissions": "^5.33.4",
+    "@strapi/strapi": "^5.33.4",
+    "@webbycrown/strapi-advanced-sitemap": "^1.0.6",
+    "better-sqlite3": "12.6.2",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-router-dom": "^6.0.0",
+    "strapi-plugin-auto-slug-manager-a-mi13": "^1.1.0",
+    "styled-components": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=20.0.0 <=24.x.x",
+    "npm": ">=6.0.0"
+  },
+  "overrides": {
+    "tar": "7.5.6",
+    "tmp": "0.2.5"
+  },
+  "strapi": {
+    "uuid": "663888bd-97de-4498-96ad-dacf51800cfa",
+    "installId": "ae271492555a3666cb2ac8bc3c3590ffe3ab019d985c4b98fabbd477b8a75b8e"
+  }
+}

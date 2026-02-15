@@ -1,0 +1,49 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pages",
+  "info": {
+    "singularName": "page",
+    "pluralName": "pages",
+    "displayName": "Page"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "slug": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "path": {
+      "type": "string",
+      "required": true
+    },
+    "titleEnglish": {
+      "type": "string",
+      "required": true
+    },
+    "titleHindi": {
+      "type": "string"
+    },
+    "excerpt": {
+      "type": "text"
+    },
+    "excerptHindi": {
+      "type": "text"
+    },
+    "content": {
+      "type": "richtext"
+    },
+    "contentHindi": {
+      "type": "richtext"
+    },
+    "order": {
+      "type": "integer"
+    },
+    "isPublished": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

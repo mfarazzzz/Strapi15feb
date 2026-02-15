@@ -1,0 +1,97 @@
+{
+  "kind": "collectionType",
+  "collectionName": "holidays",
+  "info": {
+    "singularName": "holiday",
+    "pluralName": "holidays",
+    "displayName": "Holiday"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "indexes": [
+    {
+      "name": "holidays_slug_idx",
+      "columns": [
+        "slug"
+      ]
+    },
+    {
+      "name": "holidays_date_idx",
+      "columns": [
+        "date"
+      ]
+    },
+    {
+      "name": "holidays_type_idx",
+      "columns": [
+        "type"
+      ]
+    }
+  ],
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "nameHindi": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "name",
+      "unique": true
+    },
+    "date": {
+      "type": "date",
+      "required": true
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "national",
+        "state",
+        "religious",
+        "optional",
+        "bank"
+      ]
+    },
+    "religion": {
+      "type": "enumeration",
+      "enum": [
+        "hindu",
+        "muslim",
+        "christian",
+        "sikh",
+        "buddhist",
+        "jain",
+        "secular"
+      ]
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "descriptionHindi": {
+      "type": "richtext"
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "isGazetted": {
+      "type": "boolean"
+    },
+    "isRestricted": {
+      "type": "boolean"
+    },
+    "applicableStates": {
+      "type": "json"
+    }
+  }
+}

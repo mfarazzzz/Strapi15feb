@@ -1,0 +1,112 @@
+{
+  "kind": "collectionType",
+  "collectionName": "places",
+  "info": {
+    "singularName": "place",
+    "pluralName": "places",
+    "displayName": "Place"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "indexes": [
+    {
+      "name": "places_slug_idx",
+      "columns": [
+        "slug"
+      ]
+    },
+    {
+      "name": "places_type_idx",
+      "columns": [
+        "type"
+      ]
+    },
+    {
+      "name": "places_featured_idx",
+      "columns": [
+        "is_featured"
+      ]
+    }
+  ],
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "nameHindi": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "name",
+      "unique": true
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "historical",
+        "religious",
+        "natural",
+        "recreational",
+        "educational"
+      ]
+    },
+    "address": {
+      "type": "component",
+      "repeatable": false,
+      "component": "shared.address"
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "descriptionHindi": {
+      "type": "richtext"
+    },
+    "history": {
+      "type": "richtext"
+    },
+    "historyHindi": {
+      "type": "richtext"
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "gallery": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "timings": {
+      "type": "string"
+    },
+    "entryFee": {
+      "type": "string"
+    },
+    "rating": {
+      "type": "decimal"
+    },
+    "reviewCount": {
+      "type": "integer"
+    },
+    "nearbyAttractions": {
+      "type": "json"
+    },
+    "isFeatured": {
+      "type": "boolean"
+    },
+    "seo": {
+      "type": "component",
+      "repeatable": false,
+      "component": "shared.seo"
+    }
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "kind": "collectionType",
+  "collectionName": "microsite_items",
+  "info": {
+    "singularName": "microsite-item",
+    "pluralName": "microsite-items",
+    "displayName": "Microsite Item"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "exam",
+        "result",
+        "institution",
+        "holiday",
+        "restaurant",
+        "fashion-store",
+        "shopping-centre",
+        "famous-place",
+        "event"
+      ],
+      "required": true
+    },
+    "slug": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "title": {
+      "type": "string"
+    },
+    "titleHindi": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "nameHindi": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "subcategory": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "district": {
+      "type": "string"
+    },
+    "date": {
+      "type": "datetime"
+    },
+    "endDate": {
+      "type": "datetime"
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false
+    },
+    "popular": {
+      "type": "boolean",
+      "default": false
+    },
+    "image": {
+      "type": "string"
+    },
+    "order": {
+      "type": "integer"
+    },
+    "payload": {
+      "type": "json",
+      "required": true
+    }
+  }
+}
