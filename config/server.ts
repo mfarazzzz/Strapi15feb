@@ -1,7 +1,7 @@
 export default ({ env }) => {
   const isProduction = String(env('NODE_ENV', '')).trim().toLowerCase() === 'production';
   return {
-    host: env('HOST', isProduction ? '127.0.0.1' : '0.0.0.0'),
+    host: env('HOST', '0.0.0.0'),
     port: env.int('PORT', 1337),
     proxy: env.bool('STRAPI_PROXY', isProduction),
     app: {

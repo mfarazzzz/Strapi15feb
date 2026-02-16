@@ -1,5 +1,10 @@
 import { factories } from '@strapi/strapi';
 
+const extractData = (body: any) => {
+  if (body?.data && typeof body.data === 'object') return body.data;
+  return body ?? {};
+};
+
 const parseNumber = (value: unknown): number | undefined => {
   if (value === undefined || value === null) return undefined;
   const n = Number(value);
@@ -76,7 +81,7 @@ export default factories.createCoreController('api::result.result' as any, ({ st
   },
 
   async create(ctx) {
-    const body = ctx.request.body ?? {};
+    const body = extractData(ctx.request.body);
     const entity = await (strapi.entityService as any).create('api::result.result', {
       data: body,
       populate: { image: true },
@@ -86,7 +91,7 @@ export default factories.createCoreController('api::result.result' as any, ({ st
 
   async update(ctx) {
     const id = ctx.params.id;
-    const body = ctx.request.body ?? {};
+    const body = extractData(ctx.request.body);
     const entity = await (strapi.entityService as any).update('api::result.result', id, {
       data: body,
       populate: { image: true },

@@ -4,7 +4,7 @@ export default ({ env }) => {
   const origins = (Array.isArray(configuredOrigins) ? configuredOrigins : [])
     .map((v) => String(v || '').trim())
     .filter(Boolean);
-  const safeOrigins = isProduction ? origins.filter((o) => o !== '*') : origins;
+  const safeOrigins = isProduction ? origins.filter((o) => o !== '*') : origins.length > 0 ? origins : ['*'];
 
   return [
   'strapi::logger',

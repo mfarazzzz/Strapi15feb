@@ -1,5 +1,10 @@
 import { factories } from '@strapi/strapi';
 
+const extractData = (body: any) => {
+  if (body?.data && typeof body.data === 'object') return body.data;
+  return body ?? {};
+};
+
 const normalizeTag = (entity: any) => {
   if (!entity) return null;
   const { id, ...rest } = entity;
@@ -43,7 +48,7 @@ export default factories.createCoreController('api::tag.tag', ({ strapi }) => ({
   },
 
   async create(ctx) {
-    const body = ctx.request.body ?? {};
+    const body = extractData(ctx.request.body);
     const entity = await strapi.entityService.create('api::tag.tag', {
       data: body,
     });
@@ -52,7 +57,7 @@ export default factories.createCoreController('api::tag.tag', ({ strapi }) => ({
 
   async update(ctx) {
     const id = ctx.params.id;
-    const body = ctx.request.body ?? {};
+    const body = extractData(ctx.request.body);
     const entity = await strapi.entityService.update('api::tag.tag', id, {
       data: body,
     });

@@ -1,5 +1,10 @@
 import { factories } from '@strapi/strapi';
 
+const extractData = (body: any) => {
+  if (body?.data && typeof body.data === 'object') return body.data;
+  return body ?? {};
+};
+
 const normalizeMediaItem = (entity: any) => {
   if (!entity) return null;
   const { id, ...rest } = entity;
@@ -38,7 +43,7 @@ export default factories.createCoreController('api::mediaitem.mediaitem' as any,
   },
 
   async create(ctx) {
-    const body = ctx.request.body ?? {};
+    const body = extractData(ctx.request.body);
     const entity = await (strapi.entityService as any).create('api::mediaitem.mediaitem', {
       data: body,
       populate: {
@@ -51,7 +56,7 @@ export default factories.createCoreController('api::mediaitem.mediaitem' as any,
 
   async update(ctx) {
     const id = ctx.params.id;
-    const body = ctx.request.body ?? {};
+    const body = extractData(ctx.request.body);
     const entity = await (strapi.entityService as any).update('api::mediaitem.mediaitem', id, {
       data: body,
       populate: {

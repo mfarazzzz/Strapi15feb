@@ -1,5 +1,30 @@
 export default async (policyContext: any) => {
-  const user = policyContext?.state?.user;
+  let user = policyContext?.state?.user;
+  if (!user) {
+    const auth =
+      policyContext?.request?.header?.authorization ??
+      policyContext?.request?.headers?.authorization ??
+      policyContext?.headers?.authorization;
+    const raw = typeof auth === 'string' ? auth.trim() : '';
+    if (raw.toLowerCase().startsWith('bearer ')) {
+      const token = raw.slice(7).trim();
+      if (token) {
+        try {
+          const payload = await strapi.plugin('users-permissions').service('jwt').verify(token);
+          const id = payload?.id;
+          if (id) {
+            user = await strapi.db
+              .query('plugin::users-permissions.user')
+              .findOne({ where: { id }, populate: ['role'] });
+            if (user) policyContext.state.user = user;
+          }
+        } catch {
+          void 0;
+        }
+      }
+    }
+  }
+
   if (!user) return false;
 
   const role = user?.role;
