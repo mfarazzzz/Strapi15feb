@@ -190,7 +190,19 @@ export default {
       }
     }
 
-    if (!allowSeed) return;
+    const existingCategoryCheck = (await strapi.entityService.findMany('api::category.category', {
+      limit: 1,
+    })) as any[];
+    const existingAuthorCheck = (await strapi.entityService.findMany('api::author.author', {
+      limit: 1,
+    })) as any[];
+
+    const shouldSeedCore =
+      allowSeed ||
+      (Array.isArray(existingCategoryCheck) && existingCategoryCheck.length === 0) ||
+      (Array.isArray(existingAuthorCheck) && existingAuthorCheck.length === 0);
+
+    if (!shouldSeedCore) return;
 
     const seedCategories = [
       {
@@ -387,6 +399,8 @@ export default {
         if (match?.name) authorByName.set(String(match.name), match);
       }
     }
+
+    if (!allowSeed) return;
 
     const seedPages = [
       {
