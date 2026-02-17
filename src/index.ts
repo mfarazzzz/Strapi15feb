@@ -197,8 +197,12 @@ export default {
       limit: 1,
     })) as any[];
 
+    const coreSeedFlag = String(process.env.STRAPI_SEED_CORE ?? '').trim().toLowerCase();
+    const forceCoreSeed = coreSeedFlag === '1' || coreSeedFlag === 'true' || coreSeedFlag === 'yes';
+
     const shouldSeedCore =
       allowSeed ||
+      forceCoreSeed ||
       (Array.isArray(existingCategoryCheck) && existingCategoryCheck.length === 0) ||
       (Array.isArray(existingAuthorCheck) && existingAuthorCheck.length === 0);
 
