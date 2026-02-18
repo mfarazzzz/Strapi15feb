@@ -142,13 +142,24 @@ const truncateText = (value: string, maxLength: number) => {
 };
 
 const buildSeoTitle = (title: string, categoryName: string) => {
-  const baseTitle = String(title || '').trim() || 'रामपुर न्यूज़';
+  const rawTitle = String(title || '').trim();
+  const baseTitle = rawTitle || 'रामपुर न्यूज़';
   const category = String(categoryName || '').trim();
-  const full = category ? `${baseTitle} | ${category} | Rampur News` : `${baseTitle} | Rampur News`;
-  if (full.length <= 60) return full;
-  const compact = category ? `${baseTitle} | ${category}` : baseTitle;
-  if (compact.length <= 60) return truncateText(compact, 60);
-  return truncateText(`${baseTitle} | Rampur News`, 60);
+  const brand = 'Rampur News';
+  const hasBrand =
+    baseTitle.toLowerCase().includes(brand.toLowerCase()) || baseTitle.includes('रामपुर न्यूज़');
+
+  const core = category ? `${baseTitle} | ${category}` : baseTitle;
+  const withBrand = hasBrand ? core : `${core} | ${brand}`;
+  if (withBrand.length <= 60) return withBrand;
+
+  const compactCore = category ? `${baseTitle} | ${category}` : baseTitle;
+  if (compactCore.length <= 60) return truncateText(compactCore, 60);
+
+  const baseWithBrand = hasBrand ? baseTitle : `${baseTitle} | ${brand}`;
+  if (baseWithBrand.length <= 60) return baseWithBrand;
+
+  return truncateText(baseWithBrand, 60);
 };
 
 const buildSeoDescription = (excerpt: string, content: string) => {
@@ -167,7 +178,17 @@ const buildCanonicalUrl = (categorySlug: string, articleSlug: string) => {
 };
 
 const buildNewsKeywords = (categoryName: string, tags: string[] | undefined) => {
-  const base = [String(categoryName || '').trim(), 'रामपुर', 'Rampur', 'Rampur News', 'रामपुर न्यूज़'].filter(Boolean);
+  const base = [
+    String(categoryName || '').trim(),
+    'रामपुर',
+    'Rampur',
+    'Rampur News',
+    'रामपुर न्यूज़',
+    'उत्तर प्रदेश',
+    'Uttar Pradesh',
+    'India News',
+    'Hindi News',
+  ].filter(Boolean);
   const tagList = Array.isArray(tags) ? tags.map((t) => String(t || '').trim()).filter(Boolean) : [];
   const seen = new Set<string>();
   const combined = [...tagList, ...base].filter((k) => {
