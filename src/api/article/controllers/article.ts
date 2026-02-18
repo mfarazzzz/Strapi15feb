@@ -92,6 +92,14 @@ const normalizeArticle = (entity: any, origin: string) => {
         .filter(Boolean)
     : [];
 
+  const categories =
+    Array.isArray(entity?.categories) && entity.categories.length > 0
+      ? (entity.categories as any[])
+          .map((c) => (c?.slug ? String(c.slug) : ''))
+          .map((c) => c.trim())
+          .filter(Boolean)
+      : [];
+
   return {
     id: String(entity.id),
     title: entity?.title ? String(entity.title) : '',
@@ -112,6 +120,7 @@ const normalizeArticle = (entity: any, origin: string) => {
     views: typeof entity?.views === 'number' ? entity.views : undefined,
     status,
     tags: tags.length > 0 ? tags : undefined,
+    categories: categories.length > 0 ? categories : undefined,
     seoTitle: entity?.seoTitle ? String(entity.seoTitle) : undefined,
     seoDescription: entity?.seoDescription ? String(entity.seoDescription) : undefined,
     seoOverride: typeof entity?.seoOverride === 'boolean' ? entity.seoOverride : undefined,
@@ -251,6 +260,7 @@ const buildNewsArticleSchema = (input: {
 const articlePopulate: any = {
   image: true,
   category: true,
+  categories: true,
   author: { populate: { avatar: true } },
   tags: true,
 };
@@ -462,6 +472,28 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       if (tagIds !== undefined) set('tags', tagIds);
     }
 
+    const primaryCategoryId = typeof data.category === 'number' ? data.category : undefined;
+    if (!isPartial || 'categories' in input) {
+      let extraCategoryIds: number[] | undefined;
+      if (Array.isArray(input.categories)) {
+        extraCategoryIds = (input.categories as any[])
+          .map((value) => parseRelationId(value))
+          .filter((id): id is number => typeof id === 'number');
+      }
+
+      const ids = new Set<number>();
+      if (primaryCategoryId) ids.add(primaryCategoryId);
+      if (extraCategoryIds) {
+        for (const id of extraCategoryIds) {
+          ids.add(id);
+        }
+      }
+
+      if (ids.size > 0) {
+        set('categories', Array.from(ids));
+      }
+    }
+
     if (!isPartial || 'featuredMediaId' in input || 'image' in input) {
       const featuredMediaIdRaw = input.featuredMediaId;
       const featuredMediaId = parseRelationId(featuredMediaIdRaw);
@@ -624,26 +656,46 @@ export default factories.createCoreController('api::article.article', ({ strapi 
   },
 
   async hero(ctx) {
-    const limit = parseLimit(ctx.query.limit, 15);
+    const totalLimit = parseLimit(ctx.query.limit, 15);
+    const limit = Math.max(1, Math.min(totalLimit, MAX_LIMIT));
     const origin = ctx.request.origin || '';
 
-    const baseFilters: Record<string, any> = {
-      publishedAt: { $notNull: true },
-      $or: [{ isFeatured: true }, { isBreaking: true }],
-    };
+    const featuredLimit = Math.min(3, limit);
+    const breakingLimit = Math.max(0, limit - featuredLimit);
 
-    const sortHero = [{ heroPriority: 'asc' }, { publishedAt: 'desc' }] as any;
+    const [featuredEntities, breakingCandidates] = await Promise.all([
+      es.findMany('api::article.article', {
+        filters: {
+          isFeatured: true,
+          publishedAt: { $notNull: true },
+        },
+        sort: { publishedAt: 'desc' },
+        populate: articlePopulate,
+        publicationState: 'live',
+        limit: featuredLimit,
+      }),
+      es.findMany('api::article.article', {
+        filters: {
+          isBreaking: true,
+          publishedAt: { $notNull: true },
+        },
+        sort: { publishedAt: 'desc' },
+        populate: articlePopulate,
+        publicationState: 'live',
+        limit: limit * 2,
+      }),
+    ]);
 
-    let entities = await es.findMany('api::article.article', {
-      filters: baseFilters,
-      sort: sortHero,
-      populate: articlePopulate,
-      publicationState: 'live',
-      limit,
-    });
+    const featuredList = Array.isArray(featuredEntities) ? featuredEntities : [];
+    const featuredIds = new Set((featuredList as any[]).map((e) => e.id));
 
-    if (!entities || (entities as any[]).length === 0) {
-      entities = await es.findMany('api::article.article', {
+    const breakingListRaw = Array.isArray(breakingCandidates) ? (breakingCandidates as any[]) : [];
+    const breakingList = breakingListRaw.filter((e) => !featuredIds.has(e.id)).slice(0, breakingLimit);
+
+    let combined = [...featuredList, ...breakingList];
+
+    if (combined.length === 0) {
+      combined = await es.findMany('api::article.article', {
         filters: { publishedAt: { $notNull: true } },
         sort: { publishedAt: 'desc' },
         populate: articlePopulate,
@@ -652,7 +704,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       });
     }
 
-    return (entities as any[]).map((e) => normalizeArticle(e, origin));
+    return (combined as any[]).map((e) => normalizeArticle(e, origin));
   },
 
   async trending(ctx) {
@@ -677,7 +729,9 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     }
     const origin = ctx.request.origin || '';
 
-    const filters = { category: { slug: categorySlug } };
+    const filters = {
+      $or: [{ category: { slug: categorySlug } }, { categories: { slug: categorySlug } }],
+    };
 
     const [entities, total] = await Promise.all([
       es.findMany('api::article.article', {
@@ -769,7 +823,12 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const origin = ctx.request.origin || '';
 
     const filters: Record<string, any> = {};
-    if (category) filters.category = { slug: category };
+    if (category) {
+      filters.$and = filters.$and || [];
+      filters.$and.push({
+        $or: [{ category: { slug: category } }, { categories: { slug: category } }],
+      });
+    }
     if (featured !== undefined) filters.isFeatured = featured;
     if (breaking !== undefined) filters.isBreaking = breaking;
 
@@ -840,7 +899,12 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const origin = getPublicOrigin(ctx);
 
     const filters: Record<string, any> = {};
-    if (category) filters.category = { slug: category };
+    if (category) {
+      filters.$and = filters.$and || [];
+      filters.$and.push({
+        $or: [{ category: { slug: category } }, { categories: { slug: category } }],
+      });
+    }
     if (featured !== undefined) filters.isFeatured = featured;
     if (breaking !== undefined) filters.isBreaking = breaking;
     if (author) {

@@ -153,6 +153,11 @@
       "target": "api::tag.tag",
       "inversedBy": "articles"
     },
+    "categories": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::category.category"
+    },
     "category": {
       "type": "relation",
       "relation": "manyToOne",
