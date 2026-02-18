@@ -32,6 +32,12 @@ export default {
     },
     {
       method: 'GET',
+      path: '/articles/featured-hero',
+      handler: 'article.hero',
+      config: { auth: false },
+    },
+    {
+      method: 'GET',
       path: '/articles/breaking',
       handler: 'article.breaking',
       config: { auth: false },

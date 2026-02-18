@@ -54,18 +54,18 @@ const normalizeExam = (entity: any) => {
     const admit = typeof normalized.admitCardDate === 'string' ? normalized.admitCardDate : null;
     if (admit && admit <= today) normalized.admitCardStatus = 'available';
     else if (admit && admit > today) normalized.admitCardStatus = 'upcoming';
-    else normalized.admitCardStatus = 'not-released';
-  } else if (normalized.admitCardStatus === 'notreleased') {
-    normalized.admitCardStatus = 'not-released';
+    else normalized.admitCardStatus = 'notreleased';
+  } else if (normalized.admitCardStatus === 'not-released') {
+    normalized.admitCardStatus = 'notreleased';
   }
 
   if (!normalized.resultStatus) {
     const resultDate = typeof normalized.resultDate === 'string' ? normalized.resultDate : null;
     if (resultDate && resultDate <= today) normalized.resultStatus = 'declared';
     else if (resultDate && resultDate > today) normalized.resultStatus = 'expected';
-    else normalized.resultStatus = 'not-declared';
-  } else if (normalized.resultStatus === 'notdeclared') {
-    normalized.resultStatus = 'not-declared';
+    else normalized.resultStatus = 'notdeclared';
+  } else if (normalized.resultStatus === 'not-declared') {
+    normalized.resultStatus = 'notdeclared';
   }
 
   return normalized;

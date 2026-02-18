@@ -623,6 +623,38 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     return (entities as any[]).map((e) => normalizeArticle(e, origin));
   },
 
+  async hero(ctx) {
+    const limit = parseLimit(ctx.query.limit, 15);
+    const origin = ctx.request.origin || '';
+
+    const baseFilters: Record<string, any> = {
+      publishedAt: { $notNull: true },
+      $or: [{ isFeatured: true }, { isBreaking: true }],
+    };
+
+    const sortHero = [{ heroPriority: 'asc' }, { publishedAt: 'desc' }] as any;
+
+    let entities = await es.findMany('api::article.article', {
+      filters: baseFilters,
+      sort: sortHero,
+      populate: articlePopulate,
+      publicationState: 'live',
+      limit,
+    });
+
+    if (!entities || (entities as any[]).length === 0) {
+      entities = await es.findMany('api::article.article', {
+        filters: { publishedAt: { $notNull: true } },
+        sort: { publishedAt: 'desc' },
+        populate: articlePopulate,
+        publicationState: 'live',
+        limit,
+      });
+    }
+
+    return (entities as any[]).map((e) => normalizeArticle(e, origin));
+  },
+
   async trending(ctx) {
     const limit = parseLimit(ctx.query.limit, 10);
     const origin = ctx.request.origin || '';

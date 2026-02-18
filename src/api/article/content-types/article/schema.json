@@ -39,6 +39,18 @@
       "columns": [
         "scheduled_at"
       ]
+    },
+    {
+      "name": "articles_publishedAt_idx",
+      "columns": [
+        "published_at"
+      ]
+    },
+    {
+      "name": "articles_heroPriority_idx",
+      "columns": [
+        "hero_priority"
+      ]
     }
   ],
   "attributes": {
@@ -128,6 +140,9 @@
     },
     "videoTitle": {
       "type": "string"
+    },
+    "heroPriority": {
+      "type": "integer"
     },
     "scheduledAt": {
       "type": "datetime"
