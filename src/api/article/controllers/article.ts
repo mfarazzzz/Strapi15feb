@@ -476,9 +476,33 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     if (!isPartial || 'categories' in input) {
       let extraCategoryIds: number[] | undefined;
       if (Array.isArray(input.categories)) {
-        extraCategoryIds = (input.categories as any[])
-          .map((value) => parseRelationId(value))
-          .filter((id): id is number => typeof id === 'number');
+        const numericIds: number[] = [];
+        const slugCandidates: string[] = [];
+        for (const raw of input.categories as any[]) {
+          const id = parseRelationId(raw);
+          if (typeof id === 'number') {
+            numericIds.push(id);
+          } else {
+            const slug = parseString(raw);
+            if (slug) slugCandidates.push(slug);
+          }
+        }
+
+        const slugIds: number[] = [];
+        if (slugCandidates.length > 0) {
+          const uniqueSlugs = Array.from(new Set(slugCandidates));
+          const found = await es.findMany('api::category.category', {
+            filters: { slug: { $in: uniqueSlugs } },
+            limit: uniqueSlugs.length,
+          });
+          if (Array.isArray(found)) {
+            for (const cat of found) {
+              if (cat?.id) slugIds.push(Number(cat.id));
+            }
+          }
+        }
+
+        extraCategoryIds = [...numericIds, ...slugIds];
       }
 
       const ids = new Set<number>();
