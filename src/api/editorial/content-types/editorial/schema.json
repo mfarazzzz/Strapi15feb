@@ -93,6 +93,7 @@
     "image": {
       "type": "media",
       "multiple": false,
+      "required": true,
       "allowedTypes": [
         "images"
       ]
