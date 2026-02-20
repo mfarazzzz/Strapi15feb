@@ -462,6 +462,8 @@ export default factories.createCoreController('api::article.article', ({ strapi 
 
     if (!isPartial || 'isFeatured' in input) set('isFeatured', parseBoolean(input.isFeatured));
     if (!isPartial || 'isBreaking' in input) set('isBreaking', parseBoolean(input.isBreaking));
+    if (!isPartial || 'isEditorsPick' in input) set('isEditorsPick', parseBoolean(input.isEditorsPick));
+    if (!isPartial || 'contentType' in input) set('contentType', parseString(input.contentType) ?? input.contentType ?? undefined);
     if (!isPartial || 'views' in input) set('views', parseNumber(input.views));
 
     if (!isPartial || 'scheduledAt' in input) set('scheduledAt', parseDateToISO(input.scheduledAt));
