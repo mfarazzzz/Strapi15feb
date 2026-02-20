@@ -1,7 +1,9 @@
 import { factories } from '@strapi/strapi';
 
-const MAX_LIMIT = 100;
-const SITE_URL = typeof process.env.SITE_URL === 'string' && process.env.SITE_URL.trim() ? process.env.SITE_URL.trim().replace(/\/+$/, '') : 'https://rampurnews.com';
+3→const MAX_LIMIT = 100;
+4→const SITE_URL = typeof process.env.SITE_URL === 'string' && process.env.SITE_URL.trim() ? process.env.SITE_URL.trim().replace(/\/+$/, '') : 'https://rampurnews.com';
+5→const EDITORIAL_CATEGORY_SLUG = 'editorials';
+6→const EDITORIAL_CONTENT_TYPES = ['editorial', 'review', 'interview', 'opinion', 'special-report'] as const;
 
 const toAbsoluteUrl = (origin: string, url: string) => {
   if (!url) return url;
@@ -469,7 +471,21 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     if (!isPartial || 'scheduledAt' in input) set('scheduledAt', parseDateToISO(input.scheduledAt));
 
     if (!isPartial || 'category' in input) {
-      const categoryId = await resolveCategoryId(input.category);
+      let categoryInput: unknown = input.category;
+      const rawContentType =
+        Object.prototype.hasOwnProperty.call(input, 'contentType') && input.contentType !== undefined
+          ? input.contentType
+          : (data as any).contentType;
+      const contentType =
+        typeof rawContentType === 'string' ? rawContentType.trim() : undefined;
+      if (
+        contentType &&
+        (EDITORIAL_CONTENT_TYPES as readonly string[]).includes(contentType)
+      ) {
+        categoryInput = EDITORIAL_CATEGORY_SLUG;
+      }
+
+      const categoryId = await resolveCategoryId(categoryInput);
       if (!categoryId && !isPartial) {
         throw new Error('CATEGORY_REQUIRED');
       }
