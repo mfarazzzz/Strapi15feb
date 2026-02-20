@@ -1,9 +1,12 @@
 import { factories } from '@strapi/strapi';
 
-3→const MAX_LIMIT = 100;
-4→const SITE_URL = typeof process.env.SITE_URL === 'string' && process.env.SITE_URL.trim() ? process.env.SITE_URL.trim().replace(/\/+$/, '') : 'https://rampurnews.com';
-5→const EDITORIAL_CATEGORY_SLUG = 'editorials';
-6→const EDITORIAL_CONTENT_TYPES = ['editorial', 'review', 'interview', 'opinion', 'special-report'] as const;
+const MAX_LIMIT = 100;
+const SITE_URL =
+  typeof process.env.SITE_URL === 'string' && process.env.SITE_URL.trim()
+    ? process.env.SITE_URL.trim().replace(/\/+$/, '')
+    : 'https://rampurnews.com';
+const EDITORIAL_CATEGORY_SLUG = 'editorials';
+const EDITORIAL_CONTENT_TYPES = ['editorial', 'review', 'interview', 'opinion', 'special-report'] as const;
 
 const toAbsoluteUrl = (origin: string, url: string) => {
   if (!url) return url;
