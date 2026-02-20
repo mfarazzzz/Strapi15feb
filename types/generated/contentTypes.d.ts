@@ -503,6 +503,80 @@ export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiEditorialEditorial extends Struct.CollectionTypeSchema {
+  collectionName: 'editorials';
+  info: {
+    description: 'Opinion, analysis and special editorial content — separate from regular news articles.';
+    displayName: 'Editorial Article';
+    pluralName: 'editorials';
+    singularName: 'editorial';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    articles: Schema.Attribute.Relation<'manyToMany', 'api::article.article'>;
+    author: Schema.Attribute.Relation<'manyToOne', 'api::author.author'> &
+      Schema.Attribute.Required;
+    canonicalUrl: Schema.Attribute.String;
+    content: Schema.Attribute.RichText & Schema.Attribute.Required;
+    contentHindi: Schema.Attribute.RichText;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    editorialType: Schema.Attribute.Enumeration<
+      ['editorial', 'opinion', 'review', 'interview', 'special-report']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'editorial'>;
+    excerpt: Schema.Attribute.Text & Schema.Attribute.Required;
+    excerptHindi: Schema.Attribute.Text;
+    heroPriority: Schema.Attribute.Integer;
+    image: Schema.Attribute.Media<'images'> & Schema.Attribute.Required;
+    isEditorsPick: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    isFeatured: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::editorial.editorial'
+    > &
+      Schema.Attribute.Private;
+    newsKeywords: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    readTime: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 30;
+      }>;
+    scheduledAt: Schema.Attribute.DateTime;
+    schemaJson: Schema.Attribute.JSON;
+    seoDescription: Schema.Attribute.Text &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 160;
+      }>;
+    seoOverride: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    seoTitle: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 60;
+      }>;
+    slug: Schema.Attribute.UID<'title'> &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    title: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    titleHindi: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    views: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+  };
+}
+
 export interface ApiAuthorAuthor extends Struct.CollectionTypeSchema {
   collectionName: 'authors';
   info: {
@@ -1764,6 +1838,7 @@ declare module '@strapi/strapi' {
       'admin::user': AdminUser;
       'api::article.article': ApiArticleArticle;
       'api::author.author': ApiAuthorAuthor;
+      'api::editorial.editorial': ApiEditorialEditorial;
       'api::category.category': ApiCategoryCategory;
       'api::event.event': ApiEventEvent;
       'api::exam.exam': ApiExamExam;

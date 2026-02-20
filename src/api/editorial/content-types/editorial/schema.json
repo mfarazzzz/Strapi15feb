@@ -5,7 +5,7 @@
     "singularName": "editorial",
     "pluralName": "editorials",
     "displayName": "Editorial Article",
-    "description": "Opinion, analysis and special editorial content."
+    "description": "Opinion, analysis and special editorial content — separate from regular news articles."
   },
   "options": {
     "draftAndPublish": true
@@ -18,9 +18,21 @@
       ]
     },
     {
+      "name": "editorials_editorialType_idx",
+      "columns": [
+        "editorial_type"
+      ]
+    },
+    {
       "name": "editorials_isEditorsPick_idx",
       "columns": [
         "is_editors_pick"
+      ]
+    },
+    {
+      "name": "editorials_isFeatured_idx",
+      "columns": [
+        "is_featured"
       ]
     },
     {
@@ -65,7 +77,8 @@
       "unique": true
     },
     "excerpt": {
-      "type": "text"
+      "type": "text",
+      "required": true
     },
     "excerptHindi": {
       "type": "text"
@@ -80,9 +93,22 @@
     "image": {
       "type": "media",
       "multiple": false,
+      "required": true,
       "allowedTypes": [
         "images"
       ]
+    },
+    "editorialType": {
+      "type": "enumeration",
+      "enum": [
+        "editorial",
+        "opinion",
+        "review",
+        "interview",
+        "special-report"
+      ],
+      "required": true,
+      "default": "editorial"
     },
     "readTime": {
       "type": "string",
@@ -91,6 +117,20 @@
     "views": {
       "type": "integer",
       "default": 0
+    },
+    "isFeatured": {
+      "type": "boolean",
+      "default": false
+    },
+    "isEditorsPick": {
+      "type": "boolean",
+      "default": false
+    },
+    "heroPriority": {
+      "type": "integer"
+    },
+    "scheduledAt": {
+      "type": "datetime"
     },
     "seoTitle": {
       "type": "string",
@@ -113,29 +153,17 @@
     "schemaJson": {
       "type": "json"
     },
-    "isEditorsPick": {
-      "type": "boolean",
-      "default": false
-    },
-    "heroPriority": {
-      "type": "integer"
-    },
-    "scheduledAt": {
-      "type": "datetime"
-    },
-    "category": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::category.category",
-      "inversedBy": "editorials",
-      "required": true
-    },
     "author": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::author.author",
       "inversedBy": "editorials",
       "required": true
+    },
+    "articles": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::article.article"
     }
   }
 }
