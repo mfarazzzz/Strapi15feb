@@ -51,6 +51,18 @@
       "columns": [
         "hero_priority"
       ]
+    },
+    {
+      "name": "articles_isEditorsPick_idx",
+      "columns": [
+        "is_editors_pick"
+      ]
+    },
+    {
+      "name": "articles_contentType_idx",
+      "columns": [
+        "content_type"
+      ]
     }
   ],
   "attributes": {
@@ -140,6 +152,22 @@
     },
     "videoTitle": {
       "type": "string"
+    },
+    "contentType": {
+      "type": "enumeration",
+      "enum": [
+        "news",
+        "editorial",
+        "review",
+        "interview",
+        "opinion",
+        "special-report"
+      ],
+      "default": "news"
+    },
+    "isEditorsPick": {
+      "type": "boolean",
+      "default": false
     },
     "heroPriority": {
       "type": "integer"

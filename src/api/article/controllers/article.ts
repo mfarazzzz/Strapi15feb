@@ -126,6 +126,12 @@ const normalizeArticle = (entity: any, origin: string) => {
     readTime: entity?.readTime ? String(entity.readTime) : undefined,
     isFeatured: Boolean(entity?.isFeatured),
     isBreaking: Boolean(entity?.isBreaking),
+    isEditorsPick: Boolean((entity as any)?.isEditorsPick),
+    contentType: (entity as any)?.contentType ? String((entity as any).contentType) : 'news',
+    authorRole:
+      entity?.author && typeof (entity.author as any)?.role === 'string'
+        ? String((entity.author as any).role)
+        : undefined,
     views: typeof entity?.views === 'number' ? entity.views : undefined,
     status,
     tags: tags.length > 0 ? tags : undefined,
