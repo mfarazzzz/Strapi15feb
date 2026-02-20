@@ -1,68 +1,50 @@
 {
   "kind": "collectionType",
-  "collectionName": "articles",
+  "collectionName": "editorials",
   "info": {
-    "singularName": "article",
-    "pluralName": "articles",
-    "displayName": "News Article",
-    "description": "Standard news articles with breaking and featured flags."
+    "singularName": "editorial",
+    "pluralName": "editorials",
+    "displayName": "Editorial Article",
+    "description": "Opinion, analysis and special editorial content."
   },
   "options": {
     "draftAndPublish": true
   },
   "indexes": [
     {
-      "name": "articles_slug_idx",
+      "name": "editorials_slug_idx",
       "columns": [
         "slug"
       ]
     },
     {
-      "name": "articles_featured_idx",
-      "columns": [
-        "is_featured"
-      ]
-    },
-    {
-      "name": "articles_breaking_idx",
-      "columns": [
-        "is_breaking"
-      ]
-    },
-    {
-      "name": "articles_views_idx",
-      "columns": [
-        "views"
-      ]
-    },
-    {
-      "name": "articles_scheduledAt_idx",
-      "columns": [
-        "scheduled_at"
-      ]
-    },
-    {
-      "name": "articles_publishedAt_idx",
-      "columns": [
-        "published_at"
-      ]
-    },
-    {
-      "name": "articles_heroPriority_idx",
-      "columns": [
-        "hero_priority"
-      ]
-    },
-    {
-      "name": "articles_isEditorsPick_idx",
+      "name": "editorials_isEditorsPick_idx",
       "columns": [
         "is_editors_pick"
       ]
     },
     {
-      "name": "articles_contentType_idx",
+      "name": "editorials_views_idx",
       "columns": [
-        "content_type"
+        "views"
+      ]
+    },
+    {
+      "name": "editorials_scheduledAt_idx",
+      "columns": [
+        "scheduled_at"
+      ]
+    },
+    {
+      "name": "editorials_publishedAt_idx",
+      "columns": [
+        "published_at"
+      ]
+    },
+    {
+      "name": "editorials_heroPriority_idx",
+      "columns": [
+        "hero_priority"
       ]
     }
   ],
@@ -106,17 +88,6 @@
       "type": "string",
       "maxLength": 30
     },
-    "videoUrl": {
-      "type": "string"
-    },
-    "isFeatured": {
-      "type": "boolean",
-      "default": false
-    },
-    "isBreaking": {
-      "type": "boolean",
-      "default": false
-    },
     "views": {
       "type": "integer",
       "default": 0
@@ -142,30 +113,6 @@
     "schemaJson": {
       "type": "json"
     },
-    "videoType": {
-      "type": "enumeration",
-      "enum": [
-        "youtube",
-        "upload",
-        "none"
-      ],
-      "default": "none"
-    },
-    "videoTitle": {
-      "type": "string"
-    },
-    "contentType": {
-      "type": "enumeration",
-      "enum": [
-        "news",
-        "editorial",
-        "review",
-        "interview",
-        "opinion",
-        "special-report"
-      ],
-      "default": "news"
-    },
     "isEditorsPick": {
       "type": "boolean",
       "default": false
@@ -176,29 +123,18 @@
     "scheduledAt": {
       "type": "datetime"
     },
-    "tags": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::tag.tag",
-      "inversedBy": "articles"
-    },
-    "categories": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::category.category"
-    },
     "category": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::category.category",
-      "inversedBy": "articles",
+      "inversedBy": "editorials",
       "required": true
     },
     "author": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::author.author",
-      "inversedBy": "articles",
+      "inversedBy": "editorials",
       "required": true
     }
   }

@@ -313,6 +313,14 @@ export default {
         path: '/nearby',
         order: 13,
       },
+      {
+        slug: 'editorials',
+        titleHindi: 'संपादकीय',
+        titleEnglish: 'Editorials',
+        description: 'राय, विश्लेषण और विशेष संपादकीय लेख।',
+        path: '/editorials',
+        order: 14,
+      },
     ];
 
     const existing = (await strapi.entityService.findMany('api::category.category', {

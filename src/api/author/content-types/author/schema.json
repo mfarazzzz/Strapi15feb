@@ -109,6 +109,12 @@
       "relation": "oneToMany",
       "target": "api::article.article",
       "mappedBy": "author"
+    },
+    "editorials": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::editorial.editorial",
+      "mappedBy": "author"
     }
   }
 }
