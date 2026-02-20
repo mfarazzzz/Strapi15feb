@@ -18,6 +18,11 @@
     }
   ],
   "attributes": {
+    "slug": {
+      "type": "uid",
+      "targetField": "name",
+      "unique": true
+    },
     "name": {
       "type": "string",
       "required": true,
@@ -49,6 +54,45 @@
     },
     "bioHindi": {
       "type": "richtext"
+    },
+    "designation": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "profession": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "otherRoles": {
+      "type": "string"
+    },
+    "experience": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "websiteUrl": {
+      "type": "string"
+    },
+    "linkedinUrl": {
+      "type": "string"
+    },
+    "facebookUrl": {
+      "type": "string"
+    },
+    "instagramUrl": {
+      "type": "string"
+    },
+    "twitterUrl": {
+      "type": "string"
+    },
+    "whatsappUrl": {
+      "type": "string"
+    },
+    "knowsAbout": {
+      "type": "json"
+    },
+    "socialLinks": {
+      "type": "json"
     },
     "role": {
       "type": "enumeration",

@@ -100,6 +100,13 @@ const normalizeArticle = (entity: any, origin: string) => {
           .filter(Boolean)
       : [];
 
+  const authorId =
+    entity?.author && entity.author.id !== undefined && entity.author.id !== null
+      ? String(entity.author.id)
+      : undefined;
+  const authorSlug =
+    entity?.author && entity.author.slug ? String(entity.author.slug) : undefined;
+
   return {
     id: String(entity.id),
     title: entity?.title ? String(entity.title) : '',
@@ -111,6 +118,8 @@ const normalizeArticle = (entity: any, origin: string) => {
     category: entity?.category?.slug ? String(entity.category.slug) : '',
     categoryHindi: entity?.category?.titleHindi ? String(entity.category.titleHindi) : '',
     author: entity?.author?.name ? String(entity.author.name) : entity?.author?.nameHindi ? String(entity.author.nameHindi) : '',
+    authorId,
+    authorSlug,
     publishedDate: publishedAt || (entity?.createdAt ? String(entity.createdAt) : new Date().toISOString()),
     publishedAt: publishedAt || undefined,
     modifiedDate: entity?.updatedAt ? String(entity.updatedAt) : undefined,

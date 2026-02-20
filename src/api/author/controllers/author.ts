@@ -44,12 +44,26 @@ const normalizeAuthor = (entity: any, origin: string) => {
       : undefined;
   return {
     id: String(entity.id),
+    slug: entity?.slug ? String(entity.slug) : '',
     name: entity?.name ? String(entity.name) : '',
     nameHindi: entity?.nameHindi ? String(entity.nameHindi) : '',
     email: entity?.email ? String(entity.email) : '',
     avatar: avatarUrl,
     bio: entity?.bio ? String(entity.bio) : undefined,
     bioHindi: entity?.bioHindi ? String(entity.bioHindi) : undefined,
+    designation: entity?.designation ? String(entity.designation) : undefined,
+    profession: entity?.profession ? String(entity.profession) : undefined,
+    otherRoles: entity?.otherRoles ? String(entity.otherRoles) : undefined,
+    experience: entity?.experience ? String(entity.experience) : undefined,
+    websiteUrl: entity?.websiteUrl ? String(entity.websiteUrl) : undefined,
+    linkedinUrl: entity?.linkedinUrl ? String(entity.linkedinUrl) : undefined,
+    facebookUrl: entity?.facebookUrl ? String(entity.facebookUrl) : undefined,
+    instagramUrl: entity?.instagramUrl ? String(entity.instagramUrl) : undefined,
+    twitterUrl: entity?.twitterUrl ? String(entity.twitterUrl) : undefined,
+    whatsappUrl: entity?.whatsappUrl ? String(entity.whatsappUrl) : undefined,
+    knowsAbout: Array.isArray(entity?.knowsAbout) ? entity.knowsAbout : undefined,
+    socialLinks:
+      entity?.socialLinks && typeof entity.socialLinks === 'object' ? entity.socialLinks : undefined,
     role: parseAuthorRole(entity?.role) ?? 'author',
     userId: entity?.user?.id ? String(entity.user.id) : undefined,
     createdAt: typeof entity?.createdAt === 'string' ? entity.createdAt : undefined,
@@ -125,6 +139,19 @@ export default factories.createCoreController('api::author.author', ({ strapi })
         email: parseString(input?.email) ?? '',
         bio: parseString(input?.bio),
         bioHindi: parseString(input?.bioHindi),
+        designation: parseString(input?.designation),
+        profession: parseString(input?.profession),
+        otherRoles: parseString(input?.otherRoles),
+        experience: parseString(input?.experience),
+        websiteUrl: parseString(input?.websiteUrl),
+        linkedinUrl: parseString(input?.linkedinUrl),
+        facebookUrl: parseString(input?.facebookUrl),
+        instagramUrl: parseString(input?.instagramUrl),
+        twitterUrl: parseString(input?.twitterUrl),
+        whatsappUrl: parseString(input?.whatsappUrl),
+        knowsAbout: Array.isArray(input?.knowsAbout) ? input.knowsAbout : undefined,
+        socialLinks:
+          input?.socialLinks && typeof input.socialLinks === 'object' ? input.socialLinks : undefined,
         role: role ?? 'author',
         user: parseRelationId(input?.user) ?? undefined,
         avatar: avatarId === null ? null : avatarId ?? undefined,
@@ -171,6 +198,23 @@ export default factories.createCoreController('api::author.author', ({ strapi })
     if (parseString(input?.email)) patch.email = parseString(input?.email);
     if (input?.bio !== undefined) patch.bio = parseString(input?.bio) ?? null;
     if (input?.bioHindi !== undefined) patch.bioHindi = parseString(input?.bioHindi) ?? null;
+    if (input?.designation !== undefined) patch.designation = parseString(input?.designation) ?? null;
+    if (input?.profession !== undefined) patch.profession = parseString(input?.profession) ?? null;
+    if (input?.otherRoles !== undefined) patch.otherRoles = parseString(input?.otherRoles) ?? null;
+    if (input?.experience !== undefined) patch.experience = parseString(input?.experience) ?? null;
+    if (input?.websiteUrl !== undefined) patch.websiteUrl = parseString(input?.websiteUrl) ?? null;
+    if (input?.linkedinUrl !== undefined) patch.linkedinUrl = parseString(input?.linkedinUrl) ?? null;
+    if (input?.facebookUrl !== undefined) patch.facebookUrl = parseString(input?.facebookUrl) ?? null;
+    if (input?.instagramUrl !== undefined) patch.instagramUrl = parseString(input?.instagramUrl) ?? null;
+    if (input?.twitterUrl !== undefined) patch.twitterUrl = parseString(input?.twitterUrl) ?? null;
+    if (input?.whatsappUrl !== undefined) patch.whatsappUrl = parseString(input?.whatsappUrl) ?? null;
+    if (input?.knowsAbout !== undefined) {
+      patch.knowsAbout = Array.isArray(input?.knowsAbout) ? input.knowsAbout : null;
+    }
+    if (input?.socialLinks !== undefined) {
+      patch.socialLinks =
+        input?.socialLinks && typeof input.socialLinks === 'object' ? input.socialLinks : null;
+    }
     if (input?.role !== undefined) {
       if (input?.role === null || input?.role === '') patch.role = 'author';
       else {
