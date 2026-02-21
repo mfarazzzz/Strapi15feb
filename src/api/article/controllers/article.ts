@@ -7,6 +7,14 @@ const SITE_URL =
     : 'https://rampurnews.com';
 const EDITORIAL_CATEGORY_SLUG = 'editorials';
 const EDITORIAL_CONTENT_TYPES = ['editorial', 'review', 'interview', 'opinion', 'special-report'] as const;
+const DEFAULT_SORT_FIELD = 'createdAt';
+
+const resolveSortField = (orderBy: string | undefined) => {
+  const sortKeyWhitelist = new Set(['publishedAt', 'publishedDate', 'createdAt', 'views', 'title']);
+  const sortFieldRaw = orderBy && sortKeyWhitelist.has(orderBy) ? orderBy : DEFAULT_SORT_FIELD;
+  if (sortFieldRaw === 'publishedAt' || sortFieldRaw === 'publishedDate') return DEFAULT_SORT_FIELD;
+  return sortFieldRaw;
+};
 
 const toAbsoluteUrl = (origin: string, url: string) => {
   if (!url) return url;
@@ -694,7 +702,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const origin = ctx.request.origin || '';
     const entities = await es.findMany('api::article.article', {
       filters: { isFeatured: true },
-      sort: { publishedAt: 'desc' },
+      sort: { [DEFAULT_SORT_FIELD]: 'desc' },
       populate: articlePopulate,
       publicationState: 'live',
       limit,
@@ -707,7 +715,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const origin = ctx.request.origin || '';
     const entities = await es.findMany('api::article.article', {
       filters: { isBreaking: true },
-      sort: { publishedAt: 'desc' },
+      sort: { [DEFAULT_SORT_FIELD]: 'desc' },
       populate: articlePopulate,
       publicationState: 'live',
       limit,
@@ -727,9 +735,8 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       es.findMany('api::article.article', {
         filters: {
           isFeatured: true,
-          publishedAt: { $notNull: true },
         },
-        sort: { publishedAt: 'desc' },
+        sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
         publicationState: 'live',
         limit: featuredLimit,
@@ -737,9 +744,8 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       es.findMany('api::article.article', {
         filters: {
           isBreaking: true,
-          publishedAt: { $notNull: true },
         },
-        sort: { publishedAt: 'desc' },
+        sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
         publicationState: 'live',
         limit: limit * 2,
@@ -756,8 +762,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
 
     if (combined.length === 0) {
       combined = await es.findMany('api::article.article', {
-        filters: { publishedAt: { $notNull: true } },
-        sort: { publishedAt: 'desc' },
+        sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
         publicationState: 'live',
         limit,
@@ -796,7 +801,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const [entities, total] = await Promise.all([
       es.findMany('api::article.article', {
         filters,
-        sort: { publishedAt: 'desc' },
+        sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
         publicationState: 'live',
         start: offset,
@@ -847,7 +852,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const [entities, total] = await Promise.all([
       es.findMany('api::article.article', {
         filters,
-        sort: { publishedAt: 'desc' },
+        sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
         publicationState: 'live',
         start: offset,
@@ -878,7 +883,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const breaking = parseBoolean(ctx.query.breaking);
     const search = parseString(ctx.query.search);
     const author = parseString(ctx.query.author);
-    const orderBy = parseString(ctx.query.orderBy) ?? 'publishedAt';
+    const orderBy = parseString(ctx.query.orderBy) ?? DEFAULT_SORT_FIELD;
     const order = (parseString(ctx.query.order) ?? 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
     const origin = ctx.request.origin || '';
 
@@ -954,7 +959,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const breaking = parseBoolean(ctx.query.breaking);
     const search = parseString(ctx.query.search);
     const author = parseString(ctx.query.author);
-    const orderBy = parseString(ctx.query.orderBy) ?? 'publishedAt';
+    const orderBy = parseString(ctx.query.orderBy) ?? DEFAULT_SORT_FIELD;
     const order = (parseString(ctx.query.order) ?? 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
     const origin = getPublicOrigin(ctx);
 
@@ -981,13 +986,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       ];
     }
 
-    const sortKeyWhitelist = new Set(['publishedAt', 'publishedDate', 'views', 'title']);
-    const sortFieldRaw = sortKeyWhitelist.has(orderBy) ? orderBy : 'publishedAt';
-    const sortField = sortFieldRaw === 'publishedDate' ? 'publishedAt' : sortFieldRaw;
-    const sort = { [sortField]: order };
-
-    const [entities, total] = await Promise.all([
-      es.findMany('api::article.article', {
+    const sort = { [resolveSortField(orderBy)]: order };
         filters,
         sort,
         populate: articlePopulate,
