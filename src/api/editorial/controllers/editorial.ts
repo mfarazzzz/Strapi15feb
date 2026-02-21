@@ -132,19 +132,109 @@ const buildCanonicalUrl = (slug: string) => {
 
 // ─── Populate config ─────────────────────────────────────────────────────────
 
-// NOTE: Strapi v4 entityService does NOT support nested pagination or sort inside populate.
-// Using nested pagination/sort causes: ValidationError: Invalid key pagination/sort at articles
+// NOTE: Strapi v5 entityService (v4 compat layer) does NOT support nested pagination or sort
+// inside populate. Using nested pagination/sort causes:
+//   ValidationError: Invalid key pagination/sort at articles
 // Related articles are limited via a post-processing slice; ordering is done in-memory.
+// `filters` inside populate IS supported and is used to restrict to published articles only.
 const editorialPopulate: any = {
   image: true,
   author: { populate: { avatar: true } },
   articles: {
+    filters: { publishedAt: { $notNull: true } },
     populate: { image: true, category: true, author: true },
   },
 };
 
 /** Maximum number of related articles to include in a normalized editorial response */
 const MAX_RELATED_ARTICLES = 5;
+
+// ─── Auto read-time calculator ────────────────────────────────────────────────
+
+/** Estimate reading time from HTML/rich-text content (avg 200 words/min Hindi reading speed) */
+const calcReadTime = (content: string): string => {
+  if (!content) return '2 मिनट';
+  const text = String(content)
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const wordCount = text.split(' ').filter(Boolean).length;
+  const minutes = Math.max(1, Math.round(wordCount / 200));
+  return `${minutes} मिनट`;
+};
+
+// ─── Google News schema builder ───────────────────────────────────────────────
+
+const buildEditorialSchema = (input: {
+  canonicalUrl: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  publishedAt: string;
+  modifiedAt: string;
+  authorName: string;
+  editorialType: string;
+  keywords: string;
+}) => ({
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  mainEntityOfPage: { '@type': 'WebPage', '@id': input.canonicalUrl },
+  headline: input.title,
+  description: input.description,
+  image: input.imageUrl
+    ? { '@type': 'ImageObject', url: input.imageUrl, width: 1200, height: 630 }
+    : undefined,
+  datePublished: input.publishedAt || undefined,
+  dateModified: input.modifiedAt || input.publishedAt || undefined,
+  author: input.authorName ? [{ '@type': 'Person', name: input.authorName }] : undefined,
+  publisher: {
+    '@type': 'Organization',
+    name: 'रामपुर न्यूज़ | Rampur News',
+    logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png`, width: 768, height: 768 },
+  },
+  articleSection: input.editorialType,
+  inLanguage: 'hi-IN',
+  isAccessibleForFree: true,
+  keywords: input.keywords || undefined,
+});
+
+// ─── Auto news-keywords builder ───────────────────────────────────────────────
+
+const buildEditorialKeywords = (editorialType: string, authorName: string): string => {
+  const typeLabel =
+    editorialType === 'opinion'
+      ? 'विचार, Opinion'
+      : editorialType === 'review'
+        ? 'रिव्यू, Review'
+        : editorialType === 'interview'
+          ? 'इंटरव्यू, Interview'
+          : editorialType === 'special-report'
+            ? 'स्पेशल रिपोर्ट, Special Report'
+            : 'संपादकीय, Editorial';
+  const base = [
+    typeLabel,
+    'रामपुर',
+    'Rampur',
+    'Rampur News',
+    'रामपुर न्यूज़',
+    'उत्तर प्रदेश',
+    'Uttar Pradesh',
+    'Hindi News',
+  ];
+  if (authorName) base.unshift(authorName);
+  const seen = new Set<string>();
+  return base
+    .flatMap((k) => k.split(',').map((s) => s.trim()))
+    .filter((k) => {
+      if (!k) return false;
+      const key = k.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 12)
+    .join(', ');
+};
 
 // ─── Normalizer ──────────────────────────────────────────────────────────────
 
@@ -179,7 +269,7 @@ const normalizeEditorial = (entity: any, origin: string) => {
     : undefined;
 
   // Normalize related articles — sort in-memory and slice to MAX_RELATED_ARTICLES since
-  // nested sort/pagination are not supported in Strapi v4 entityService populate.
+  // nested sort/pagination are not supported in Strapi v5 entityService (v4 compat) populate.
   const relatedArticles = Array.isArray(entity?.articles)
     ? (entity.articles as any[])
         .filter(Boolean)
@@ -208,8 +298,16 @@ const normalizeEditorial = (entity: any, origin: string) => {
       : 'editorial';
 
   const title = entity?.title ? String(entity.title) : '';
+  const titleHindi = entity?.titleHindi ? String(entity.titleHindi) : undefined;
   const excerpt = entity?.excerpt ? String(entity.excerpt) : '';
   const content = entity?.content ? String(entity.content) : '';
+  const slug = entity?.slug ? String(entity.slug) : '';
+
+  const authorName = entity?.author?.name
+    ? String(entity.author.name)
+    : entity?.author?.nameHindi
+      ? String(entity.author.nameHindi)
+      : '';
 
   // SEO auto-generation
   const seoTitle =
@@ -222,24 +320,45 @@ const normalizeEditorial = (entity: any, origin: string) => {
       : buildSeoDescription(excerpt, content);
   const canonicalUrl = entity?.canonicalUrl
     ? String(entity.canonicalUrl)
-    : buildCanonicalUrl(entity?.slug ? String(entity.slug) : '');
+    : buildCanonicalUrl(slug);
+
+  // Auto-calculate read time if not set (avg 200 words/min for Hindi)
+  const readTime = entity?.readTime
+    ? String(entity.readTime)
+    : calcReadTime(entity?.contentHindi || content);
+
+  // Auto-generate news keywords if not set
+  const newsKeywords = entity?.newsKeywords
+    ? String(entity.newsKeywords)
+    : buildEditorialKeywords(editorialType, authorName);
+
+  // Auto-generate schema.org JSON-LD if not overridden by editor
+  const schemaJson =
+    entity?.schemaJson ??
+    buildEditorialSchema({
+      canonicalUrl,
+      title: titleHindi || title,
+      description: seoDescription,
+      imageUrl: imageUrl,
+      publishedAt: publishedAt,
+      modifiedAt: entity?.updatedAt ? String(entity.updatedAt) : publishedAt,
+      authorName,
+      editorialType,
+      keywords: newsKeywords,
+    });
 
   return {
     id: String(entity.id),
     title,
-    titleHindi: entity?.titleHindi ? String(entity.titleHindi) : undefined,
-    slug: entity?.slug ? String(entity.slug) : '',
+    titleHindi,
+    slug,
     excerpt,
     excerptHindi: entity?.excerptHindi ? String(entity.excerptHindi) : undefined,
     content,
     contentHindi: entity?.contentHindi ? String(entity.contentHindi) : undefined,
     image: imageUrl || '/placeholder.svg',
     editorialType,
-    author: entity?.author?.name
-      ? String(entity.author.name)
-      : entity?.author?.nameHindi
-        ? String(entity.author.nameHindi)
-        : '',
+    author: authorName,
     authorId,
     authorSlug,
     authorAvatar: authorAvatarUrl,
@@ -251,7 +370,7 @@ const normalizeEditorial = (entity: any, origin: string) => {
       publishedAt || (entity?.createdAt ? String(entity.createdAt) : new Date().toISOString()),
     publishedAt: publishedAt || undefined,
     modifiedDate: entity?.updatedAt ? String(entity.updatedAt) : undefined,
-    readTime: entity?.readTime ? String(entity.readTime) : undefined,
+    readTime,
     isFeatured: Boolean(entity?.isFeatured),
     isEditorsPick: Boolean(entity?.isEditorsPick),
     views: typeof entity?.views === 'number' ? entity.views : undefined,
@@ -261,8 +380,8 @@ const normalizeEditorial = (entity: any, origin: string) => {
     seoDescription,
     seoOverride: typeof entity?.seoOverride === 'boolean' ? entity.seoOverride : undefined,
     canonicalUrl,
-    newsKeywords: entity?.newsKeywords ? String(entity.newsKeywords) : undefined,
-    schemaJson: entity?.schemaJson ?? undefined,
+    newsKeywords,
+    schemaJson,
     relatedArticles: relatedArticles.length > 0 ? relatedArticles : undefined,
   };
 };
