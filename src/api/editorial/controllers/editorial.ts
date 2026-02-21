@@ -137,7 +137,8 @@ const editorialPopulate: any = {
   author: { populate: { avatar: true } },
   articles: {
     populate: { image: true, category: true, author: true },
-    limit: 5,
+    pagination: { page: 1, pageSize: 5 },
+    sort: ['publishedAt:desc'],
   },
 };
 
