@@ -987,6 +987,8 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     }
 
     const sort = { [resolveSortField(orderBy)]: order };
+    const [entities, total] = await Promise.all([
+      es.findMany('api::article.article', {
         filters,
         sort,
         populate: articlePopulate,
