@@ -878,6 +878,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const limit = parseLimit(ctx.query.limit, 25);
     const offset = parseNumber(ctx.query.offset) ?? 0;
     const category = parseString(ctx.query.category);
+    const parent = parseString(ctx.query.parent);
     const status = parseString(ctx.query.status);
     const featured = parseBoolean(ctx.query.featured);
     const breaking = parseBoolean(ctx.query.breaking);
@@ -888,11 +889,16 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const origin = ctx.request.origin || '';
 
     const filters: Record<string, any> = {};
-    if (category) {
+    if (category || parent) {
       filters.$and = filters.$and || [];
-      filters.$and.push({
-        $or: [{ category: { slug: category } }, { categories: { slug: category } }],
-      });
+      const or: any[] = [];
+      if (category) {
+        or.push({ category: { slug: category } }, { categories: { slug: category } });
+      }
+      if (parent) {
+        or.push({ category: { parent: { slug: parent } } }, { categories: { parent: { slug: parent } } });
+      }
+      filters.$and.push({ $or: or });
     }
     if (featured !== undefined) filters.isFeatured = featured;
     if (breaking !== undefined) filters.isBreaking = breaking;
@@ -955,6 +961,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const limit = parseLimit(ctx.query.limit, 25);
     const offset = parseNumber(ctx.query.offset) ?? 0;
     const category = parseString(ctx.query.category);
+    const parent = parseString(ctx.query.parent);
     const featured = parseBoolean(ctx.query.featured);
     const breaking = parseBoolean(ctx.query.breaking);
     const search = parseString(ctx.query.search);
@@ -964,11 +971,16 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const origin = getPublicOrigin(ctx);
 
     const filters: Record<string, any> = {};
-    if (category) {
+    if (category || parent) {
       filters.$and = filters.$and || [];
-      filters.$and.push({
-        $or: [{ category: { slug: category } }, { categories: { slug: category } }],
-      });
+      const or: any[] = [];
+      if (category) {
+        or.push({ category: { slug: category } }, { categories: { slug: category } });
+      }
+      if (parent) {
+        or.push({ category: { parent: { slug: parent } } }, { categories: { parent: { slug: parent } } });
+      }
+      filters.$and.push({ $or: or });
     }
     if (featured !== undefined) filters.isFeatured = featured;
     if (breaking !== undefined) filters.isBreaking = breaking;
