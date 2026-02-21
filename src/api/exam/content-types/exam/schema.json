@@ -23,9 +23,9 @@
       ]
     },
     {
-      "name": "exams_status_idx",
+      "name": "exams_examStatus_idx",
       "columns": [
-        "status"
+        "exam_status"
       ]
     },
     {
@@ -113,7 +113,7 @@
         "images"
       ]
     },
-    "status": {
+    "examStatus": {
       "type": "enumeration",
       "enum": [
         "upcoming",

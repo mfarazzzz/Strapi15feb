@@ -132,18 +132,16 @@ const buildCanonicalUrl = (slug: string) => {
 
 // ─── Populate config ─────────────────────────────────────────────────────────
 
-// NOTE: Strapi v5 entityService (v4 compat layer) does NOT support nested pagination or sort
-// inside populate. Using nested pagination/sort causes:
-//   ValidationError: Invalid key pagination/sort at articles
-// Related articles are limited via a post-processing slice; ordering is done in-memory.
-// `filters` inside populate IS supported and is used to restrict to published articles only.
+// NOTE: Strapi v5 entityService (v4 compat layer) does NOT support nested pagination, sort,
+// or filters inside populate for relation fields. Using them causes ValidationError.
+// Related articles are filtered (published-only) and limited in-memory after fetch.
 const editorialPopulate: any = {
   image: true,
   author: { populate: { avatar: true } },
-  articles: {
-    filters: { publishedAt: { $notNull: true } },
-    populate: { image: true, category: true, author: true },
-  },
+  // Fetch related articles with their image, category, and author.
+  // NOTE: Only `populate` (nested) is supported here — no sort, pagination, or filters.
+  // Published-only filtering and sorting are done in-memory in normalizeEditorial().
+  articles: { populate: { image: true, category: true, author: true } },
 };
 
 /** Maximum number of related articles to include in a normalized editorial response */
@@ -268,11 +266,12 @@ const normalizeEditorial = (entity: any, origin: string) => {
     ? toAbsoluteUrl(origin, entity.author.avatar.url)
     : undefined;
 
-  // Normalize related articles — sort in-memory and slice to MAX_RELATED_ARTICLES since
-  // nested sort/pagination are not supported in Strapi v5 entityService (v4 compat) populate.
+  // Normalize related articles — filter published-only, sort in-memory, and slice to
+  // MAX_RELATED_ARTICLES since nested sort/pagination/filters are not supported in
+  // Strapi v5 entityService (v4 compat) populate.
   const relatedArticles = Array.isArray(entity?.articles)
     ? (entity.articles as any[])
-        .filter(Boolean)
+        .filter((a: any) => Boolean(a) && Boolean(a?.publishedAt))
         .sort((a: any, b: any) => {
           const aTime = a?.publishedAt ? new Date(a.publishedAt).getTime() : 0;
           const bTime = b?.publishedAt ? new Date(b.publishedAt).getTime() : 0;

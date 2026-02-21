@@ -35,10 +35,10 @@ const normalizeExam = (entity: any) => {
   const today = new Date().toISOString().slice(0, 10);
   const examDate = typeof normalized.examDate === 'string' ? normalized.examDate : null;
 
-  if (!normalized.status && examDate) {
-    if (examDate > today) normalized.status = 'upcoming';
-    else if (examDate < today) normalized.status = 'completed';
-    else normalized.status = 'ongoing';
+  if (!normalized.examStatus && examDate) {
+    if (examDate > today) normalized.examStatus = 'upcoming';
+    else if (examDate < today) normalized.examStatus = 'completed';
+    else normalized.examStatus = 'ongoing';
   }
 
   if (!normalized.applicationStatus) {
@@ -78,7 +78,7 @@ export default factories.createCoreController('api::exam.exam' as any, ({ strapi
 
     const entities = await (strapi.entityService as any).findMany('api::exam.exam', {
       filters: {
-        $or: [{ status: 'upcoming' }, { examDate: { $gte: today } }],
+        $or: [{ examStatus: 'upcoming' }, { examDate: { $gte: today } }],
       },
       sort: { examDate: 'asc' },
       populate: {
