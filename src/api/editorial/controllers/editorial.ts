@@ -132,15 +132,19 @@ const buildCanonicalUrl = (slug: string) => {
 
 // ─── Populate config ─────────────────────────────────────────────────────────
 
+// NOTE: Strapi v4 entityService does NOT support nested pagination or sort inside populate.
+// Using nested pagination/sort causes: ValidationError: Invalid key pagination/sort at articles
+// Related articles are limited via a post-processing slice; ordering is done in-memory.
 const editorialPopulate: any = {
   image: true,
   author: { populate: { avatar: true } },
   articles: {
     populate: { image: true, category: true, author: true },
-    pagination: { page: 1, pageSize: 5 },
-    sort: ['publishedAt:desc'],
   },
 };
+
+/** Maximum number of related articles to include in a normalized editorial response */
+const MAX_RELATED_ARTICLES = 5;
 
 // ─── Normalizer ──────────────────────────────────────────────────────────────
 
@@ -174,10 +178,17 @@ const normalizeEditorial = (entity: any, origin: string) => {
     ? toAbsoluteUrl(origin, entity.author.avatar.url)
     : undefined;
 
-  // Normalize related articles
+  // Normalize related articles — sort in-memory and slice to MAX_RELATED_ARTICLES since
+  // nested sort/pagination are not supported in Strapi v4 entityService populate.
   const relatedArticles = Array.isArray(entity?.articles)
     ? (entity.articles as any[])
         .filter(Boolean)
+        .sort((a: any, b: any) => {
+          const aTime = a?.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+          const bTime = b?.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+          return bTime - aTime; // descending
+        })
+        .slice(0, MAX_RELATED_ARTICLES)
         .map((a: any) => ({
           id: String(a.id),
           title: a?.title ? String(a.title) : '',
