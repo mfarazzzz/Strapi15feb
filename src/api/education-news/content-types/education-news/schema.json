@@ -3,7 +3,7 @@
   "collectionName": "education_news",
   "info": {
     "singularName": "education-news",
-    "pluralName": "education-news",
+    "pluralName": "education-news-items",
     "displayName": "Education News"
   },
   "options": {
@@ -101,4 +101,3 @@
     }
   }
 }
-
