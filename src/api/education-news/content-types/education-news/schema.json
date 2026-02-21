@@ -1,0 +1,104 @@
+{
+  "kind": "collectionType",
+  "collectionName": "education_news",
+  "info": {
+    "singularName": "education-news",
+    "pluralName": "education-news",
+    "displayName": "Education News"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "indexes": [
+    {
+      "name": "education_news_slug_idx",
+      "columns": [
+        "slug"
+      ]
+    },
+    {
+      "name": "education_news_category_idx",
+      "columns": [
+        "category"
+      ]
+    }
+  ],
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true,
+      "maxLength": 250
+    },
+    "titleHindi": {
+      "type": "string",
+      "maxLength": 250
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "title",
+      "unique": true
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "board-news",
+        "exam-news",
+        "result-news",
+        "admission-news",
+        "scholarship",
+        "government-order"
+      ],
+      "required": true
+    },
+    "excerpt": {
+      "type": "text"
+    },
+    "excerptHindi": {
+      "type": "text"
+    },
+    "content": {
+      "type": "richtext"
+    },
+    "contentHindi": {
+      "type": "richtext"
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "source": {
+      "type": "string"
+    },
+    "sourceLink": {
+      "type": "string"
+    },
+    "author": {
+      "type": "string"
+    },
+    "isBreaking": {
+      "type": "boolean",
+      "default": false
+    },
+    "isImportant": {
+      "type": "boolean",
+      "default": false
+    },
+    "isFeatured": {
+      "type": "boolean",
+      "default": false
+    },
+    "relatedExams": {
+      "type": "json"
+    },
+    "relatedResults": {
+      "type": "json"
+    },
+    "tags": {
+      "type": "json"
+    }
+  }
+}
+
