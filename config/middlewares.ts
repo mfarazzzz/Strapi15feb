@@ -47,13 +47,6 @@ export default ({ env }) => {
         headers: env.array('CORS_HEADERS', ['Content-Type', 'Authorization', 'Origin', 'Accept']),
       },
     },
-    {
-      name: 'strapi::rateLimit',
-      config: {
-        interval: env.int('RATE_LIMIT_INTERVAL', 60 * 1000),
-        max: env.int('RATE_LIMIT_MAX', 200),
-      },
-    },
     'strapi::compression',
     'strapi::query',
     'global::cache-control',
