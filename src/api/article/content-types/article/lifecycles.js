@@ -132,14 +132,17 @@ const syncFlags = (data) => {
   }
 };
 
-const fillSeoFields = (data) => {
-  const title = data.title || '';
-  const excerpt = data.excerpt || '';
-  if (!data.seo_title) data.seo_title = title;
-  if (!data.meta_description) data.meta_description = truncate(stripHtml(excerpt), 160);
-  if (!data.seoTitle) data.seoTitle = data.seo_title || title;
-  if (!data.seoDescription) data.seoDescription = data.meta_description || truncate(stripHtml(excerpt), 160);
-  if (!data.short_headline) data.short_headline = truncate(title, 110);
+const fillSeoFields = (data, existing = null) => {
+  const title = data.title || existing?.title || '';
+  const excerpt = data.excerpt || existing?.excerpt || '';
+  if (!data.seo_title) data.seo_title = existing?.seo_title || title;
+  if (!data.meta_description) data.meta_description = existing?.meta_description || truncate(stripHtml(excerpt), 160);
+  if (!data.seoTitle) data.seoTitle = existing?.seoTitle || data.seo_title || title;
+  if (!data.seoDescription) {
+    data.seoDescription =
+      existing?.seoDescription || data.meta_description || truncate(stripHtml(excerpt), 160);
+  }
+  if (!data.short_headline) data.short_headline = existing?.short_headline || truncate(title, 110);
 };
 
 const validateHeadlines = (data) => {
@@ -211,7 +214,7 @@ module.exports = {
 
     if (!data.slug && data.title) data.slug = toSlug(data.title);
     await ensureUniqueSlug(strapi, data.slug || existing?.slug, where?.id);
-    fillSeoFields(data);
+    fillSeoFields(data, existing);
     validateHeadlines(data);
 
     const shouldPublish = shouldPublishFromData(data);
