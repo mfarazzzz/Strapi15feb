@@ -382,8 +382,12 @@ export default factories.createCoreController('api::article.article', ({ strapi 
 
     const proto = forwardedProto || 'http';
     const forwardedHostWithPort = forwardedHost || headerHost;
-    if (forwardedHostWithPort && /:1337\b/.test(forwardedHostWithPort)) {
-      return `${proto}://${forwardedHostWithPort}`.replace(/\/+$/, '');
+    if (forwardedHostWithPort) {
+      const hostValue = String(forwardedHostWithPort).trim().replace(/\/+$/, '');
+      if (hostValue) {
+        if (/^https?:\/\//i.test(hostValue)) return hostValue.replace(/\/+$/, '');
+        return `${proto}://${hostValue}`.replace(/\/+$/, '');
+      }
     }
 
     const configuredHost = (strapi.config.get('server.host') as string | undefined) || '127.0.0.1';
