@@ -5,6 +5,10 @@ const SITE_URL =
   typeof process.env.SITE_URL === 'string' && process.env.SITE_URL.trim()
     ? process.env.SITE_URL.trim().replace(/\/+$/, '')
     : 'https://rampurnews.com';
+const SITE_URL =
+  typeof process.env.SITE_URL === 'string' && process.env.SITE_URL.trim()
+    ? process.env.SITE_URL.trim().replace(/\/+$/, '')
+    : 'https://rampurnews.com';
 const EDITORIAL_CATEGORY_SLUG = 'editorials';
 const EDITORIAL_CONTENT_TYPES = ['editorial', 'review', 'interview', 'opinion', 'special-report'] as const;
 const DEFAULT_SORT_FIELD = 'createdAt';
@@ -24,6 +28,28 @@ const toAbsoluteUrl = (origin: string, url: string) => {
   } catch {
     return url;
   }
+};
+const getPublisherLogoUrl = (origin?: string) => {
+  const base = String(origin || SITE_URL || 'https://rampurnews.com').trim().replace(/\/+$/, '');
+  if (!base) return 'https://rampurnews.com/logo.png';
+  if (base.startsWith('http://')) return `${base.replace(/^http:\/\//, 'https://')}/logo.png`;
+  if (!base.startsWith('https://')) return 'https://rampurnews.com/logo.png';
+  return `${base}/logo.png`;
+};
+
+const escapeXml = (value: string) =>
+  String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
+const formatIso = (value?: string) => {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toISOString();
 };
 
 const slugify = (value: string) =>
@@ -82,6 +108,9 @@ const parseDateToISO = (value: unknown): string | undefined => {
 const normalizeArticle = (entity: any, origin: string) => {
   if (!entity) return null;
   const imageUrl = entity?.image?.url ? toAbsoluteUrl(origin, entity.image.url) : '';
+  const featuredImageUrl = entity?.featured_image?.url
+    ? toAbsoluteUrl(origin, entity.featured_image.url)
+    : imageUrl;
   const publishedAt = entity?.publishedAt
     ? String(entity.publishedAt)
     : entity?.published_at
@@ -120,13 +149,161 @@ const normalizeArticle = (entity: any, origin: string) => {
   const authorSlug =
     entity?.author && entity.author.slug ? String(entity.author.slug) : undefined;
 
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: entity?.short_headline ? String(entity.short_headline) : entity?.title ? String(entity.title) : '',
+    image: featuredImageUrl || '',
+    datePublished: publishedAt || (entity?.createdAt ? String(entity.createdAt) : ''),
+    dateModified: entity?.updatedAt ? String(entity.updatedAt) : publishedAt || '',
+    author: {
+      '@type': 'Person',
+      name:
+        entity?.author?.nameHindi
+          ? String(entity.author.nameHindi)
+          : entity?.author?.name
+            ? String(entity.author.name)
+            : '',
+    },
+    async newsSitemap(ctx) {
+      const origin = getPublicOrigin(ctx) || SITE_URL;
+      const now = new Date();
+      const since = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
+
+      const entities = await es.findMany('api::article.article', {
+        filters: {
+          is_news: true,
+          publishedAt: { $gte: since },
+        },
+        sort: { publishedAt: 'desc' },
+        limit: 1000,
+        populate: { featured_image: true, image: true, category: true },
+        publicationState: 'live',
+      });
+
+      const urls = (entities as any[]).map((entity) => {
+        const slug = entity?.slug ? String(entity.slug) : '';
+        const categorySlug = entity?.category?.slug ? String(entity.category.slug) : '';
+        const loc = `${origin}/${categorySlug}/${slug}`.replace(/\/+/g, '/').replace(':/', '://');
+        const publishedIso = formatIso(entity?.publishedAt || entity?.createdAt) || now.toISOString();
+        const lastmod = formatIso(entity?.updatedAt || entity?.publishedAt) || publishedIso;
+        const title = entity?.short_headline ? String(entity.short_headline) : entity?.title ? String(entity.title) : '';
+
+        return `
+  <url>
+    <loc>${escapeXml(loc)}</loc>
+    <lastmod>${escapeXml(lastmod)}</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>Rampur News</news:name>
+        <news:language>hi</news:language>
+      </news:publication>
+      <news:publication_date>${escapeXml(publishedIso)}</news:publication_date>
+      <news:title>${escapeXml(title)}</news:title>
+    </news:news>
+  </url>`;
+      });
+
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+${urls.join('')}
+</urlset>`;
+
+      ctx.type = 'application/xml';
+      return xml;
+    },
+
+    async sitemap(ctx) {
+      const origin = getPublicOrigin(ctx) || SITE_URL;
+      const now = new Date().toISOString();
+
+      const [articles, categories, authors] = await Promise.all([
+        es.findMany('api::article.article', {
+          sort: { publishedAt: 'desc' },
+          limit: 5000,
+          populate: { category: true },
+          publicationState: 'live',
+        }),
+        es.findMany('api::category.category', { limit: 2000 }),
+        es.findMany('api::author.author', { limit: 2000 }),
+      ]);
+
+      const staticPaths = ['/', '/rampur', '/up', '/national', '/politics', '/crime', '/education-jobs', '/business', '/entertainment', '/sports', '/health'];
+
+      const urls = [
+        ...staticPaths.map((path) => ({
+          loc: `${origin}${path}`,
+          lastmod: now,
+        })),
+        ...(categories as any[]).map((c) => ({
+          loc: `${origin}/${c?.path || c?.slug || ''}`.replace(/\/+/g, '/').replace(':/', '://'),
+          lastmod: now,
+        })),
+        ...(authors as any[]).map((a) => ({
+          loc: `${origin}/authors/${a?.slug || ''}`.replace(/\/+/g, '/').replace(':/', '://'),
+          lastmod: now,
+        })),
+        ...(articles as any[]).map((a) => {
+          const categorySlug = a?.category?.slug ? String(a.category.slug) : '';
+          const loc = `${origin}/${categorySlug}/${a?.slug || ''}`.replace(/\/+/g, '/').replace(':/', '://');
+          const lastmod = formatIso(a?.updatedAt || a?.publishedAt) || now;
+          return { loc, lastmod };
+        }),
+      ]
+        .filter((u) => u.loc && !u.loc.includes('/tags') && !u.loc.includes('/tag') && !u.loc.includes('/admin'));
+
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls
+  .map(
+    (u) => `
+  <url>
+    <loc>${escapeXml(u.loc)}</loc>
+    <lastmod>${escapeXml(u.lastmod)}</lastmod>
+  </url>`,
+  )
+  .join('')}
+</urlset>`;
+
+      ctx.type = 'application/xml';
+      return xml;
+    },
+
+    async robots(ctx) {
+      const origin = getPublicOrigin(ctx) || SITE_URL;
+      ctx.type = 'text/plain';
+      return `User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api
+
+Sitemap: ${origin}/sitemap.xml
+Sitemap: ${origin}/news-sitemap.xml
+`;
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Rampur News',
+      logo: {
+        '@type': 'ImageObject',
+        url: getPublisherLogoUrl(origin),
+        width: 768,
+        height: 768,
+      },
+    },
+  };
+
   return {
     id: String(entity.id),
     title: entity?.title ? String(entity.title) : '',
+    short_headline: entity?.short_headline ? String(entity.short_headline) : '',
     slug: entity?.slug ? String(entity.slug) : '',
     excerpt: entity?.excerpt ? String(entity.excerpt) : '',
     content: entity?.content ? String(entity.content) : '',
-    image: imageUrl || '/placeholder.svg',
+    image: featuredImageUrl || imageUrl || '/placeholder.svg',
+    featured_image: featuredImageUrl || undefined,
+    featured_image_id: entity?.featured_image?.id ? String(entity.featured_image.id) : undefined,
     featuredMediaId: entity?.image?.id ? String(entity.image.id) : undefined,
     category: entity?.category?.slug ? String(entity.category.slug) : '',
     categoryHindi: entity?.category?.titleHindi ? String(entity.category.titleHindi) : '',
@@ -136,9 +313,13 @@ const normalizeArticle = (entity: any, origin: string) => {
     publishedDate: publishedAt || (entity?.createdAt ? String(entity.createdAt) : new Date().toISOString()),
     publishedAt: publishedAt || undefined,
     modifiedDate: entity?.updatedAt ? String(entity.updatedAt) : undefined,
+    updatedAt: entity?.updatedAt ? String(entity.updatedAt) : undefined,
     readTime: entity?.readTime ? String(entity.readTime) : undefined,
     isFeatured: Boolean(entity?.isFeatured),
     isBreaking: Boolean(entity?.isBreaking),
+    is_featured: typeof entity?.is_featured === 'boolean' ? entity.is_featured : Boolean(entity?.isFeatured),
+    is_breaking: typeof entity?.is_breaking === 'boolean' ? entity.is_breaking : Boolean(entity?.isBreaking),
+    is_news: typeof entity?.is_news === 'boolean' ? entity.is_news : true,
     isEditorsPick: Boolean((entity as any)?.isEditorsPick),
     contentType: (entity as any)?.contentType ? String((entity as any).contentType) : 'news',
     authorRole:
@@ -149,16 +330,24 @@ const normalizeArticle = (entity: any, origin: string) => {
     status,
     tags: tags.length > 0 ? tags : undefined,
     categories: categories.length > 0 ? categories : undefined,
+    focus_keyword: entity?.focus_keyword ? String(entity.focus_keyword) : undefined,
+    location: entity?.location ? String(entity.location) : undefined,
+    news_category: entity?.news_category ? String(entity.news_category) : undefined,
     seoTitle: entity?.seoTitle ? String(entity.seoTitle) : undefined,
     seoDescription: entity?.seoDescription ? String(entity.seoDescription) : undefined,
     seoOverride: typeof entity?.seoOverride === 'boolean' ? entity.seoOverride : undefined,
+    discoverEligible: typeof entity?.discoverEligible === 'boolean' ? entity.discoverEligible : undefined,
     canonicalUrl: entity?.canonicalUrl ? String(entity.canonicalUrl) : undefined,
     newsKeywords: entity?.newsKeywords ? String(entity.newsKeywords) : undefined,
     schemaJson: entity?.schemaJson ?? undefined,
+    seo_title: entity?.seo_title ? String(entity.seo_title) : undefined,
+    meta_description: entity?.meta_description ? String(entity.meta_description) : undefined,
+    seo: entity?.seo ?? undefined,
     videoUrl: entity?.videoUrl ? String(entity.videoUrl) : undefined,
     videoType: entity?.videoType ? String(entity.videoType) : undefined,
     videoTitle: entity?.videoTitle ? String(entity.videoTitle) : undefined,
     scheduledAt: scheduledAt || undefined,
+    structuredData,
   };
 };
 
@@ -273,7 +462,7 @@ const buildNewsArticleSchema = (input: {
       name: 'रामपुर न्यूज़ | Rampur News',
       logo: {
         '@type': 'ImageObject',
-        url: `${SITE_URL}/logo.png`,
+        url: getPublisherLogoUrl(SITE_URL),
         width: 768,
         height: 768,
       },
@@ -287,10 +476,12 @@ const buildNewsArticleSchema = (input: {
 
 const articlePopulate: any = {
   image: true,
+  featured_image: true,
   category: true,
   categories: true,
   author: { populate: { avatar: true } },
   tags: true,
+  seo: { populate: { ogImage: true } },
 };
 
 export default factories.createCoreController('api::article.article', ({ strapi }) => {
@@ -457,10 +648,16 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     if (!isPartial || 'excerptHindi' in input) set('excerptHindi', parseString(input.excerptHindi) ?? input.excerptHindi ?? undefined);
     if (!isPartial || 'content' in input) set('content', parseString(input.content) ?? input.content ?? undefined);
     if (!isPartial || 'contentHindi' in input) set('contentHindi', parseString(input.contentHindi) ?? input.contentHindi ?? undefined);
+    if (!isPartial || 'short_headline' in input) set('short_headline', parseString(input.short_headline) ?? input.short_headline ?? undefined);
     if (!isPartial || 'readTime' in input) set('readTime', parseString(input.readTime) ?? input.readTime ?? undefined);
     if (!isPartial || 'videoUrl' in input) set('videoUrl', parseString(input.videoUrl) ?? input.videoUrl ?? undefined);
     if (!isPartial || 'videoType' in input) set('videoType', parseString(input.videoType) ?? input.videoType ?? undefined);
     if (!isPartial || 'videoTitle' in input) set('videoTitle', parseString(input.videoTitle) ?? input.videoTitle ?? undefined);
+    if (!isPartial || 'seo_title' in input) set('seo_title', parseString(input.seo_title) ?? input.seo_title ?? undefined);
+    if (!isPartial || 'meta_description' in input) set('meta_description', parseString(input.meta_description) ?? input.meta_description ?? undefined);
+    if (!isPartial || 'focus_keyword' in input) set('focus_keyword', parseString(input.focus_keyword) ?? input.focus_keyword ?? undefined);
+    if (!isPartial || 'location' in input) set('location', parseString(input.location) ?? input.location ?? undefined);
+    if (!isPartial || 'news_category' in input) set('news_category', parseString(input.news_category) ?? input.news_category ?? undefined);
     if (!isPartial || 'seoTitle' in input) set('seoTitle', parseString(input.seoTitle) ?? input.seoTitle ?? undefined);
     if (!isPartial || 'seoDescription' in input) set('seoDescription', parseString(input.seoDescription) ?? input.seoDescription ?? undefined);
     if (!isPartial || 'seoOverride' in input) set('seoOverride', parseBoolean(input.seoOverride) ?? false);
@@ -472,9 +669,18 @@ export default factories.createCoreController('api::article.article', ({ strapi 
         set('schemaJson', schemaCandidate);
       }
     }
+    if (!isPartial || 'seo' in input) {
+      const seoCandidate = input.seo;
+      if (seoCandidate && typeof seoCandidate === 'object') {
+        set('seo', seoCandidate);
+      }
+    }
 
     if (!isPartial || 'isFeatured' in input) set('isFeatured', parseBoolean(input.isFeatured));
     if (!isPartial || 'isBreaking' in input) set('isBreaking', parseBoolean(input.isBreaking));
+    if (!isPartial || 'is_featured' in input) set('is_featured', parseBoolean(input.is_featured));
+    if (!isPartial || 'is_breaking' in input) set('is_breaking', parseBoolean(input.is_breaking));
+    if (!isPartial || 'is_news' in input) set('is_news', parseBoolean(input.is_news) ?? true);
     if (!isPartial || 'isEditorsPick' in input) set('isEditorsPick', parseBoolean(input.isEditorsPick));
     if (!isPartial || 'contentType' in input) set('contentType', parseString(input.contentType) ?? input.contentType ?? undefined);
     if (!isPartial || 'views' in input) set('views', parseNumber(input.views));
@@ -559,6 +765,21 @@ export default factories.createCoreController('api::article.article', ({ strapi 
 
       if (ids.size > 0) {
         set('categories', Array.from(ids));
+      }
+    }
+
+    if (!isPartial || 'featured_image' in input || 'featuredImageId' in input || 'featuredImage' in input) {
+      const featuredImageRaw = input.featuredImageId ?? input.featuredImage ?? input.featured_image;
+      const featuredImageId = parseRelationId(featuredImageRaw);
+      const featuredImageUrl = typeof featuredImageRaw === 'string' ? parseString(featuredImageRaw) : undefined;
+
+      if (featuredImageId) {
+        set('featured_image', featuredImageId);
+      } else if (featuredImageRaw === null || (featuredImageRaw === '' && !featuredImageUrl)) {
+        set('featured_image', null);
+      } else if (featuredImageUrl) {
+        const fileId = await resolveUploadFileIdByUrl(featuredImageUrl, origin);
+        if (fileId) set('featured_image', fileId);
       }
     }
 

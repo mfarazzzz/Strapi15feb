@@ -1,0 +1,32 @@
+{
+  "collectionName": "components_seo_metadata",
+  "info": {
+    "displayName": "SEO Metadata",
+    "description": "Reusable SEO fields"
+  },
+  "attributes": {
+    "metaTitle": {
+      "type": "string",
+      "required": true,
+      "maxLength": 70
+    },
+    "metaDescription": {
+      "type": "text",
+      "required": true,
+      "maxLength": 160
+    },
+    "canonicalURL": {
+      "type": "string"
+    },
+    "ogImage": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "structuredData": {
+      "type": "json"
+    }
+  }
+}

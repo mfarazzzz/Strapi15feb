@@ -51,6 +51,11 @@
     "descriptionHindi": {
       "type": "text"
     },
+    "seo": {
+      "type": "component",
+      "repeatable": false,
+      "component": "seo.metadata"
+    },
     "path": {
       "type": "string",
       "required": true

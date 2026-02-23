@@ -32,6 +32,11 @@
     "excerptHindi": {
       "type": "text"
     },
+    "seo": {
+      "type": "component",
+      "repeatable": false,
+      "component": "seo.metadata"
+    },
     "content": {
       "type": "richtext"
     },

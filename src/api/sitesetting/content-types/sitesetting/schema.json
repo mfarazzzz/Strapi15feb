@@ -77,6 +77,24 @@
     },
     "footerTextHindi": {
       "type": "richtext"
+    },
+    "gscPropertyUrl": {
+      "type": "string"
+    },
+    "gscExportUrl": {
+      "type": "string"
+    },
+    "backlinkReportUrl": {
+      "type": "string"
+    },
+    "referringDomains": {
+      "type": "json"
+    },
+    "backlinkNotes": {
+      "type": "text"
+    },
+    "lastBacklinkSync": {
+      "type": "datetime"
     }
   }
 }

@@ -116,17 +116,71 @@ export default {
       });
     };
 
+    const setRolePermissions = async (roleType: string, allowedActions: string[]) => {
+      const role = await strapi.db.query('plugin::users-permissions.role').findOne({
+        where: { type: roleType },
+      });
+      if (!role?.id) return;
+
+      const permissions = await strapi.db
+        .query('plugin::users-permissions.permission')
+        .findMany({ where: { role: role.id } });
+
+      if (!Array.isArray(permissions)) return;
+
+      for (const perm of permissions) {
+        const action = String(perm.action || '');
+        const shouldEnable = allowedActions.includes(action);
+        if (perm.enabled !== shouldEnable) {
+          await strapi.db
+            .query('plugin::users-permissions.permission')
+            .update({ where: { id: perm.id }, data: { enabled: shouldEnable } });
+        }
+      }
+    };
+
     if (allowSeed) {
       await ensureRole('admin', 'Admin', 'Full access within the Admin CMS.');
       await ensureRole('editor', 'Editor', 'Can edit and publish content.');
       await ensureRole('author', 'Author', 'Can create and edit own content.');
       await ensureRole('contributor', 'Contributor', 'Can submit drafts for review.');
+      await ensureRole('reporter', 'Reporter', 'Can create drafts only.');
 
       await syncDuplicateRolesByType('admin');
       await syncDuplicateRolesByType('editor');
       await syncDuplicateRolesByType('author');
       await syncDuplicateRolesByType('contributor');
+      await syncDuplicateRolesByType('reporter');
       await ensureAdminUserPermissions();
+
+      const publicAllowed = [
+        'api::article.article.find',
+        'api::article.article.findOne',
+        'api::category.category.find',
+        'api::category.category.findOne',
+        'api::author.author.find',
+        'api::author.author.findOne',
+        'api::tag.tag.find',
+        'api::tag.tag.findOne',
+      ];
+      await setRolePermissions('public', publicAllowed);
+
+      const reporterAllowed = [
+        'api::article.article.find',
+        'api::article.article.findOne',
+        'api::article.article.create',
+        'api::article.article.update',
+        'api::author.author.find',
+        'api::category.category.find',
+        'api::tag.tag.find',
+      ];
+      await setRolePermissions('reporter', reporterAllowed);
+
+      const editorAllowed = [
+        ...reporterAllowed,
+        'api::article.article.delete',
+      ];
+      await setRolePermissions('editor', editorAllowed);
     }
 
     const allowPublicRegistration = (() => {

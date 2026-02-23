@@ -64,6 +64,12 @@
       "columns": [
         "content_type"
       ]
+    },
+    {
+      "name": "articles_newsCategory_idx",
+      "columns": [
+        "news_category"
+      ]
     }
   ],
   "attributes": {
@@ -83,7 +89,8 @@
       "unique": true
     },
     "excerpt": {
-      "type": "text"
+      "type": "text",
+      "required": true
     },
     "excerptHindi": {
       "type": "text"
@@ -101,6 +108,65 @@
       "allowedTypes": [
         "images"
       ]
+    },
+    "featured_image": {
+      "type": "media",
+      "multiple": false,
+      "required": true,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "short_headline": {
+      "type": "string",
+      "required": true,
+      "maxLength": 110
+    },
+    "seo_title": {
+      "type": "string",
+      "required": true,
+      "maxLength": 70
+    },
+    "meta_description": {
+      "type": "text",
+      "required": true,
+      "maxLength": 160
+    },
+    "focus_keyword": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "news_category": {
+      "type": "enumeration",
+      "enum": [
+        "Local",
+        "State",
+        "National",
+        "Politics",
+        "Crime",
+        "Education",
+        "Sports",
+        "Business"
+      ],
+      "required": true
+    },
+    "discoverEligible": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_featured": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_breaking": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_news": {
+      "type": "boolean",
+      "default": true
     },
     "readTime": {
       "type": "string",
@@ -128,6 +194,11 @@
     "seoDescription": {
       "type": "text",
       "maxLength": 160
+    },
+    "seo": {
+      "type": "component",
+      "repeatable": false,
+      "component": "seo.metadata"
     },
     "seoOverride": {
       "type": "boolean",

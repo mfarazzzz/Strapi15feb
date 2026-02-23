@@ -34,6 +34,12 @@ const pickSiteSettingPayload = (value: any) => ({
   googleAdsenseId: value?.googleAdsenseId ?? undefined,
   footerText: value?.footerText ?? undefined,
   footerTextHindi: value?.footerTextHindi ?? undefined,
+  gscPropertyUrl: value?.gscPropertyUrl ?? undefined,
+  gscExportUrl: value?.gscExportUrl ?? undefined,
+  backlinkReportUrl: value?.backlinkReportUrl ?? undefined,
+  referringDomains: value?.referringDomains ?? undefined,
+  backlinkNotes: value?.backlinkNotes ?? undefined,
+  lastBacklinkSync: value?.lastBacklinkSync ?? undefined,
 });
 
 export default factories.createCoreController('api::sitesetting.sitesetting' as any, ({ strapi }) => ({

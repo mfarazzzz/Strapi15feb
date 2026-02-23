@@ -34,7 +34,6 @@
     },
     "email": {
       "type": "email",
-      "required": true,
       "unique": true
     },
     "user": {
@@ -49,6 +48,13 @@
         "images"
       ]
     },
+    "profile_image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
     "bio": {
       "type": "richtext"
     },
@@ -56,6 +62,10 @@
       "type": "richtext"
     },
     "designation": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "expertise": {
       "type": "string",
       "maxLength": 200
     },
@@ -76,10 +86,19 @@
     "linkedinUrl": {
       "type": "string"
     },
+    "linkedin_url": {
+      "type": "string"
+    },
     "facebookUrl": {
       "type": "string"
     },
     "instagramUrl": {
+      "type": "string"
+    },
+    "twitter_url": {
+      "type": "string"
+    },
+    "facebook_url": {
       "type": "string"
     },
     "twitterUrl": {

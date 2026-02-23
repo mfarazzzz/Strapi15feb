@@ -62,6 +62,24 @@ export default {
     },
     {
       method: 'GET',
+      path: '/news-sitemap',
+      handler: 'article.newsSitemap',
+      config: { auth: false },
+    },
+    {
+      method: 'GET',
+      path: '/sitemap.xml',
+      handler: 'article.sitemap',
+      config: { auth: false },
+    },
+    {
+      method: 'GET',
+      path: '/robots.txt',
+      handler: 'article.robots',
+      config: { auth: false },
+    },
+    {
+      method: 'GET',
       path: '/articles/slug/:slug',
       handler: 'article.findBySlug',
       config: { auth: false },

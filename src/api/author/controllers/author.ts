@@ -42,6 +42,10 @@ const normalizeAuthor = (entity: any, origin: string) => {
     entity?.avatar?.url && typeof entity.avatar.url === 'string'
       ? toAbsoluteUrl(origin, entity.avatar.url)
       : undefined;
+  const profileImageUrl =
+    entity?.profile_image?.url && typeof entity.profile_image.url === 'string'
+      ? toAbsoluteUrl(origin, entity.profile_image.url)
+      : undefined;
   return {
     id: String(entity.id),
     slug: entity?.slug ? String(entity.slug) : '',
@@ -49,17 +53,22 @@ const normalizeAuthor = (entity: any, origin: string) => {
     nameHindi: entity?.nameHindi ? String(entity.nameHindi) : '',
     email: entity?.email ? String(entity.email) : '',
     avatar: avatarUrl,
+    profile_image: profileImageUrl,
     bio: entity?.bio ? String(entity.bio) : undefined,
     bioHindi: entity?.bioHindi ? String(entity.bioHindi) : undefined,
     designation: entity?.designation ? String(entity.designation) : undefined,
+    expertise: entity?.expertise ? String(entity.expertise) : undefined,
     profession: entity?.profession ? String(entity.profession) : undefined,
     otherRoles: entity?.otherRoles ? String(entity.otherRoles) : undefined,
     experience: entity?.experience ? String(entity.experience) : undefined,
     websiteUrl: entity?.websiteUrl ? String(entity.websiteUrl) : undefined,
     linkedinUrl: entity?.linkedinUrl ? String(entity.linkedinUrl) : undefined,
+    linkedin_url: entity?.linkedin_url ? String(entity.linkedin_url) : undefined,
     facebookUrl: entity?.facebookUrl ? String(entity.facebookUrl) : undefined,
     instagramUrl: entity?.instagramUrl ? String(entity.instagramUrl) : undefined,
     twitterUrl: entity?.twitterUrl ? String(entity.twitterUrl) : undefined,
+    twitter_url: entity?.twitter_url ? String(entity.twitter_url) : undefined,
+    facebook_url: entity?.facebook_url ? String(entity.facebook_url) : undefined,
     whatsappUrl: entity?.whatsappUrl ? String(entity.whatsappUrl) : undefined,
     knowsAbout: Array.isArray(entity?.knowsAbout) ? entity.knowsAbout : undefined,
     socialLinks:
@@ -77,7 +86,7 @@ export default factories.createCoreController('api::author.author', ({ strapi })
     const entities = await strapi.entityService.findMany(AUTHOR_UID, {
       sort: { name: 'asc' },
       limit: 1000,
-      populate: { avatar: true, user: { populate: { role: true } } },
+      populate: { avatar: true, profile_image: true, user: { populate: { role: true } } },
     });
     return (entities as any[]).map((e) => normalizeAuthor(e, origin)).filter(Boolean);
   },
@@ -86,7 +95,7 @@ export default factories.createCoreController('api::author.author', ({ strapi })
     const origin = ctx.request.origin || '';
     const id = ctx.params.id;
     const entity = await strapi.entityService.findOne(AUTHOR_UID, id, {
-      populate: { avatar: true, user: { populate: { role: true } } },
+      populate: { avatar: true, profile_image: true, user: { populate: { role: true } } },
     });
     if (!entity) {
       ctx.notFound('Author not found');
@@ -126,6 +135,9 @@ export default factories.createCoreController('api::author.author', ({ strapi })
     };
 
     const avatarId = await resolveAvatarId(input?.avatar ?? input?.avatarId);
+    const profileImageId = await resolveAvatarId(
+      input?.profile_image ?? input?.profileImage ?? input?.profileImageId,
+    );
     const roleRaw = input?.role;
     const role = parseAuthorRole(roleRaw);
     if (roleRaw !== undefined && roleRaw !== null && roleRaw !== '' && !role) {
@@ -140,14 +152,18 @@ export default factories.createCoreController('api::author.author', ({ strapi })
         bio: parseString(input?.bio),
         bioHindi: parseString(input?.bioHindi),
         designation: parseString(input?.designation),
+        expertise: parseString(input?.expertise),
         profession: parseString(input?.profession),
         otherRoles: parseString(input?.otherRoles),
         experience: parseString(input?.experience),
         websiteUrl: parseString(input?.websiteUrl),
         linkedinUrl: parseString(input?.linkedinUrl),
+        linkedin_url: parseString(input?.linkedin_url),
         facebookUrl: parseString(input?.facebookUrl),
         instagramUrl: parseString(input?.instagramUrl),
         twitterUrl: parseString(input?.twitterUrl),
+        twitter_url: parseString(input?.twitter_url),
+        facebook_url: parseString(input?.facebook_url),
         whatsappUrl: parseString(input?.whatsappUrl),
         knowsAbout: Array.isArray(input?.knowsAbout) ? input.knowsAbout : undefined,
         socialLinks:
@@ -155,8 +171,14 @@ export default factories.createCoreController('api::author.author', ({ strapi })
         role: role ?? 'author',
         user: parseRelationId(input?.user) ?? undefined,
         avatar: avatarId === null ? null : avatarId ?? undefined,
+        profile_image: profileImageId === null ? null : profileImageId ?? undefined,
       },
-      populate: { avatar: true, user: { populate: { role: true } } },
+        role: role ?? 'author',
+        user: parseRelationId(input?.user) ?? undefined,
+        avatar: avatarId === null ? null : avatarId ?? undefined,
+        profile_image: profileImageId === null ? null : profileImageId ?? undefined,
+      },
+      populate: { avatar: true, profile_image: true, user: { populate: { role: true } } },
     });
     return normalizeAuthor(entity, origin);
   },
@@ -191,6 +213,9 @@ export default factories.createCoreController('api::author.author', ({ strapi })
       if (typeof value === 'string') return await resolveUploadFileIdByUrl(value);
       return undefined;
     };
+    const profileImageId = await resolveAvatarId(
+      input?.profile_image ?? input?.profileImage ?? input?.profileImageId,
+    );
 
     const patch: Record<string, any> = {};
     if (parseString(input?.name)) patch.name = parseString(input?.name);
@@ -236,7 +261,7 @@ export default factories.createCoreController('api::author.author', ({ strapi })
 
     const entity = await strapi.entityService.update(AUTHOR_UID, id, {
       data: patch,
-      populate: { avatar: true, user: { populate: { role: true } } },
+      populate: { avatar: true, profile_image: true, user: { populate: { role: true } } },
     });
     return normalizeAuthor(entity, origin);
   },
