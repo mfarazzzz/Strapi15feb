@@ -182,12 +182,6 @@ export default factories.createCoreController('api::author.author', ({ strapi })
         profile_image: profileImageId === null ? null : profileImageId ?? undefined,
         cover_image: coverImageId === null ? null : coverImageId ?? undefined,
       },
-        role: role ?? 'author',
-        user: parseRelationId(input?.user) ?? undefined,
-        avatar: avatarId === null ? null : avatarId ?? undefined,
-        profile_image: profileImageId === null ? null : profileImageId ?? undefined,
-        cover_image: coverImageId === null ? null : coverImageId ?? undefined,
-      },
       populate: { avatar: true, profile_image: true, cover_image: true, user: { populate: { role: true } } },
     });
     return normalizeAuthor(entity, origin);

@@ -5,10 +5,6 @@ const SITE_URL =
   typeof process.env.SITE_URL === 'string' && process.env.SITE_URL.trim()
     ? process.env.SITE_URL.trim().replace(/\/+$/, '')
     : 'https://rampurnews.com';
-const SITE_URL =
-  typeof process.env.SITE_URL === 'string' && process.env.SITE_URL.trim()
-    ? process.env.SITE_URL.trim().replace(/\/+$/, '')
-    : 'https://rampurnews.com';
 const EDITORIAL_CATEGORY_SLUG = 'editorials';
 const EDITORIAL_CONTENT_TYPES = ['editorial', 'review', 'interview', 'opinion', 'special-report'] as const;
 const DEFAULT_SORT_FIELD = 'createdAt';
@@ -164,123 +160,6 @@ const normalizeArticle = (entity: any, origin: string) => {
           : entity?.author?.name
             ? String(entity.author.name)
             : '',
-    },
-    async newsSitemap(ctx) {
-      const origin = getPublicOrigin(ctx) || SITE_URL;
-      const now = new Date();
-      const since = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
-
-      const entities = await es.findMany('api::article.article', {
-        filters: {
-          is_news: true,
-          publishedAt: { $gte: since },
-        },
-        sort: { publishedAt: 'desc' },
-        limit: 1000,
-        populate: { featured_image: true, image: true, category: true },
-        publicationState: 'live',
-      });
-
-      const urls = (entities as any[]).map((entity) => {
-        const slug = entity?.slug ? String(entity.slug) : '';
-        const categorySlug = entity?.category?.slug ? String(entity.category.slug) : '';
-        const loc = `${origin}/${categorySlug}/${slug}`.replace(/\/+/g, '/').replace(':/', '://');
-        const publishedIso = formatIso(entity?.publishedAt || entity?.createdAt) || now.toISOString();
-        const lastmod = formatIso(entity?.updatedAt || entity?.publishedAt) || publishedIso;
-        const title = entity?.short_headline ? String(entity.short_headline) : entity?.title ? String(entity.title) : '';
-
-        return `
-  <url>
-    <loc>${escapeXml(loc)}</loc>
-    <lastmod>${escapeXml(lastmod)}</lastmod>
-    <news:news>
-      <news:publication>
-        <news:name>Rampur News</news:name>
-        <news:language>hi</news:language>
-      </news:publication>
-      <news:publication_date>${escapeXml(publishedIso)}</news:publication_date>
-      <news:title>${escapeXml(title)}</news:title>
-    </news:news>
-  </url>`;
-      });
-
-      const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
-${urls.join('')}
-</urlset>`;
-
-      ctx.type = 'application/xml';
-      return xml;
-    },
-
-    async sitemap(ctx) {
-      const origin = getPublicOrigin(ctx) || SITE_URL;
-      const now = new Date().toISOString();
-
-      const [articles, categories, authors] = await Promise.all([
-        es.findMany('api::article.article', {
-          sort: { publishedAt: 'desc' },
-          limit: 5000,
-          populate: { category: true },
-          publicationState: 'live',
-        }),
-        es.findMany('api::category.category', { limit: 2000 }),
-        es.findMany('api::author.author', { limit: 2000 }),
-      ]);
-
-      const staticPaths = ['/', '/rampur', '/up', '/national', '/politics', '/crime', '/education-jobs', '/business', '/entertainment', '/sports', '/health'];
-
-      const urls = [
-        ...staticPaths.map((path) => ({
-          loc: `${origin}${path}`,
-          lastmod: now,
-        })),
-        ...(categories as any[]).map((c) => ({
-          loc: `${origin}/${c?.path || c?.slug || ''}`.replace(/\/+/g, '/').replace(':/', '://'),
-          lastmod: now,
-        })),
-        ...(authors as any[]).map((a) => ({
-          loc: `${origin}/authors/${a?.slug || ''}`.replace(/\/+/g, '/').replace(':/', '://'),
-          lastmod: now,
-        })),
-        ...(articles as any[]).map((a) => {
-          const categorySlug = a?.category?.slug ? String(a.category.slug) : '';
-          const loc = `${origin}/${categorySlug}/${a?.slug || ''}`.replace(/\/+/g, '/').replace(':/', '://');
-          const lastmod = formatIso(a?.updatedAt || a?.publishedAt) || now;
-          return { loc, lastmod };
-        }),
-      ]
-        .filter((u) => u.loc && !u.loc.includes('/tags') && !u.loc.includes('/tag') && !u.loc.includes('/admin'));
-
-      const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls
-  .map(
-    (u) => `
-  <url>
-    <loc>${escapeXml(u.loc)}</loc>
-    <lastmod>${escapeXml(u.lastmod)}</lastmod>
-  </url>`,
-  )
-  .join('')}
-</urlset>`;
-
-      ctx.type = 'application/xml';
-      return xml;
-    },
-
-    async robots(ctx) {
-      const origin = getPublicOrigin(ctx) || SITE_URL;
-      ctx.type = 'text/plain';
-      return `User-agent: *
-Allow: /
-Disallow: /admin
-Disallow: /api
-
-Sitemap: ${origin}/sitemap.xml
-Sitemap: ${origin}/news-sitemap.xml
-`;
     },
     publisher: {
       '@type': 'Organization',
@@ -917,8 +796,8 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     return data;
   };
 
-  return ({
-  async featured(ctx) {
+  return {
+    async featured(ctx) {
     const limit = parseLimit(ctx.query.limit, 10);
     const origin = ctx.request.origin || '';
     const entities = await es.findMany('api::article.article', {
@@ -992,6 +871,123 @@ export default factories.createCoreController('api::article.article', ({ strapi 
 
     return (combined as any[]).map((e) => normalizeArticle(e, origin));
   },
+
+    async newsSitemap(ctx) {
+      const origin = getPublicOrigin(ctx) || SITE_URL;
+      const now = new Date();
+      const since = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
+
+      const entities = await es.findMany('api::article.article', {
+        filters: {
+          is_news: true,
+          publishedAt: { $gte: since },
+        },
+        sort: { publishedAt: 'desc' },
+        limit: 1000,
+        populate: { featured_image: true, image: true, category: true },
+        publicationState: 'live',
+      });
+
+      const urls = (entities as any[]).map((entity) => {
+        const slug = entity?.slug ? String(entity.slug) : '';
+        const categorySlug = entity?.category?.slug ? String(entity.category.slug) : '';
+        const loc = `${origin}/${categorySlug}/${slug}`.replace(/\/+/g, '/').replace(':/', '://');
+        const publishedIso = formatIso(entity?.publishedAt || entity?.createdAt) || now.toISOString();
+        const lastmod = formatIso(entity?.updatedAt || entity?.publishedAt) || publishedIso;
+        const title = entity?.short_headline ? String(entity.short_headline) : entity?.title ? String(entity.title) : '';
+
+        return `
+  <url>
+    <loc>${escapeXml(loc)}</loc>
+    <lastmod>${escapeXml(lastmod)}</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>Rampur News</news:name>
+        <news:language>hi</news:language>
+      </news:publication>
+      <news:publication_date>${escapeXml(publishedIso)}</news:publication_date>
+      <news:title>${escapeXml(title)}</news:title>
+    </news:news>
+  </url>`;
+      });
+
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+${urls.join('')}
+</urlset>`;
+
+      ctx.type = 'application/xml';
+      return xml;
+    },
+
+    async sitemap(ctx) {
+      const origin = getPublicOrigin(ctx) || SITE_URL;
+      const now = new Date().toISOString();
+
+      const [articles, categories, authors] = await Promise.all([
+        es.findMany('api::article.article', {
+          sort: { publishedAt: 'desc' },
+          limit: 5000,
+          populate: { category: true },
+          publicationState: 'live',
+        }),
+        es.findMany('api::category.category', { limit: 2000 }),
+        es.findMany('api::author.author', { limit: 2000 }),
+      ]);
+
+      const staticPaths = ['/', '/rampur', '/up', '/national', '/politics', '/crime', '/education-jobs', '/business', '/entertainment', '/sports', '/health'];
+
+      const urls = [
+        ...staticPaths.map((path) => ({
+          loc: `${origin}${path}`,
+          lastmod: now,
+        })),
+        ...(categories as any[]).map((c) => ({
+          loc: `${origin}/${c?.path || c?.slug || ''}`.replace(/\/+/g, '/').replace(':/', '://'),
+          lastmod: now,
+        })),
+        ...(authors as any[]).map((a) => ({
+          loc: `${origin}/authors/${a?.slug || ''}`.replace(/\/+/g, '/').replace(':/', '://'),
+          lastmod: now,
+        })),
+        ...(articles as any[]).map((a) => {
+          const categorySlug = a?.category?.slug ? String(a.category.slug) : '';
+          const loc = `${origin}/${categorySlug}/${a?.slug || ''}`.replace(/\/+/g, '/').replace(':/', '://');
+          const lastmod = formatIso(a?.updatedAt || a?.publishedAt) || now;
+          return { loc, lastmod };
+        }),
+      ].filter((u) => u.loc && !u.loc.includes('/tags') && !u.loc.includes('/tag') && !u.loc.includes('/admin'));
+
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls
+  .map(
+    (u) => `
+  <url>
+    <loc>${escapeXml(u.loc)}</loc>
+    <lastmod>${escapeXml(u.lastmod)}</lastmod>
+  </url>`,
+  )
+  .join('')}
+</urlset>`;
+
+      ctx.type = 'application/xml';
+      return xml;
+    },
+
+    async robots(ctx) {
+      const origin = getPublicOrigin(ctx) || SITE_URL;
+      ctx.type = 'text/plain';
+      return `User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api
+
+Sitemap: ${origin}/sitemap.xml
+Sitemap: ${origin}/news-sitemap.xml
+`;
+    },
 
   async trending(ctx) {
     const limit = parseLimit(ctx.query.limit, 10);
@@ -1350,5 +1346,5 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     await es.delete('api::article.article', id);
     ctx.status = 204;
   },
-  });
+  };
 });
