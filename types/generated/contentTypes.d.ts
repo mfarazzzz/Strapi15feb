@@ -590,6 +590,7 @@ export interface ApiAuthorAuthor extends Struct.CollectionTypeSchema {
   attributes: {
     articles: Schema.Attribute.Relation<'oneToMany', 'api::article.article'>;
     avatar: Schema.Attribute.Media<'images'>;
+    cover_image: Schema.Attribute.Media<'images'>;
     bio: Schema.Attribute.RichText;
     bioHindi: Schema.Attribute.RichText;
     createdAt: Schema.Attribute.DateTime;

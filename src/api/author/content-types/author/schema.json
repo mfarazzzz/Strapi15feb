@@ -55,6 +55,13 @@
         "images"
       ]
     },
+    "cover_image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
     "bio": {
       "type": "richtext"
     },

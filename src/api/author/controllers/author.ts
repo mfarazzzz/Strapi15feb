@@ -46,6 +46,10 @@ const normalizeAuthor = (entity: any, origin: string) => {
     entity?.profile_image?.url && typeof entity.profile_image.url === 'string'
       ? toAbsoluteUrl(origin, entity.profile_image.url)
       : undefined;
+  const coverImageUrl =
+    entity?.cover_image?.url && typeof entity.cover_image.url === 'string'
+      ? toAbsoluteUrl(origin, entity.cover_image.url)
+      : undefined;
   return {
     id: String(entity.id),
     slug: entity?.slug ? String(entity.slug) : '',
@@ -54,6 +58,7 @@ const normalizeAuthor = (entity: any, origin: string) => {
     email: entity?.email ? String(entity.email) : '',
     avatar: avatarUrl,
     profile_image: profileImageUrl,
+    coverImage: coverImageUrl,
     bio: entity?.bio ? String(entity.bio) : undefined,
     bioHindi: entity?.bioHindi ? String(entity.bioHindi) : undefined,
     designation: entity?.designation ? String(entity.designation) : undefined,
@@ -86,7 +91,7 @@ export default factories.createCoreController('api::author.author', ({ strapi })
     const entities = await strapi.entityService.findMany(AUTHOR_UID, {
       sort: { name: 'asc' },
       limit: 1000,
-      populate: { avatar: true, profile_image: true, user: { populate: { role: true } } },
+      populate: { avatar: true, profile_image: true, cover_image: true, user: { populate: { role: true } } },
     });
     return (entities as any[]).map((e) => normalizeAuthor(e, origin)).filter(Boolean);
   },
@@ -95,7 +100,7 @@ export default factories.createCoreController('api::author.author', ({ strapi })
     const origin = ctx.request.origin || '';
     const id = ctx.params.id;
     const entity = await strapi.entityService.findOne(AUTHOR_UID, id, {
-      populate: { avatar: true, profile_image: true, user: { populate: { role: true } } },
+      populate: { avatar: true, profile_image: true, cover_image: true, user: { populate: { role: true } } },
     });
     if (!entity) {
       ctx.notFound('Author not found');
@@ -138,6 +143,9 @@ export default factories.createCoreController('api::author.author', ({ strapi })
     const profileImageId = await resolveAvatarId(
       input?.profile_image ?? input?.profileImage ?? input?.profileImageId,
     );
+    const coverImageId = await resolveAvatarId(
+      input?.cover_image ?? input?.coverImage ?? input?.coverImageId,
+    );
     const roleRaw = input?.role;
     const role = parseAuthorRole(roleRaw);
     if (roleRaw !== undefined && roleRaw !== null && roleRaw !== '' && !role) {
@@ -172,13 +180,15 @@ export default factories.createCoreController('api::author.author', ({ strapi })
         user: parseRelationId(input?.user) ?? undefined,
         avatar: avatarId === null ? null : avatarId ?? undefined,
         profile_image: profileImageId === null ? null : profileImageId ?? undefined,
+        cover_image: coverImageId === null ? null : coverImageId ?? undefined,
       },
         role: role ?? 'author',
         user: parseRelationId(input?.user) ?? undefined,
         avatar: avatarId === null ? null : avatarId ?? undefined,
         profile_image: profileImageId === null ? null : profileImageId ?? undefined,
+        cover_image: coverImageId === null ? null : coverImageId ?? undefined,
       },
-      populate: { avatar: true, profile_image: true, user: { populate: { role: true } } },
+      populate: { avatar: true, profile_image: true, cover_image: true, user: { populate: { role: true } } },
     });
     return normalizeAuthor(entity, origin);
   },
@@ -215,6 +225,9 @@ export default factories.createCoreController('api::author.author', ({ strapi })
     };
     const profileImageId = await resolveAvatarId(
       input?.profile_image ?? input?.profileImage ?? input?.profileImageId,
+    );
+    const coverImageId = await resolveAvatarId(
+      input?.cover_image ?? input?.coverImage ?? input?.coverImageId,
     );
 
     const patch: Record<string, any> = {};
@@ -258,10 +271,18 @@ export default factories.createCoreController('api::author.author', ({ strapi })
       if (avatarId === null) patch.avatar = null;
       else if (avatarId !== undefined) patch.avatar = avatarId;
     }
+    if (
+      input?.cover_image !== undefined ||
+      input?.coverImage !== undefined ||
+      input?.coverImageId !== undefined
+    ) {
+      if (coverImageId === null) patch.cover_image = null;
+      else if (coverImageId !== undefined) patch.cover_image = coverImageId;
+    }
 
     const entity = await strapi.entityService.update(AUTHOR_UID, id, {
       data: patch,
-      populate: { avatar: true, profile_image: true, user: { populate: { role: true } } },
+      populate: { avatar: true, profile_image: true, cover_image: true, user: { populate: { role: true } } },
     });
     return normalizeAuthor(entity, origin);
   },
