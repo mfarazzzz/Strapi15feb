@@ -1,6 +1,6 @@
 import { factories } from '@strapi/strapi';
 
-const MAX_LIMIT = 100;
+const MAX_LIMIT = 5000;
 const SITE_URL =
   typeof process.env.SITE_URL === 'string' && process.env.SITE_URL.trim()
     ? process.env.SITE_URL.trim().replace(/\/+$/, '')
