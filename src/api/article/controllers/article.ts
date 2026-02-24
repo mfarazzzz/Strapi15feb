@@ -224,14 +224,6 @@ const truncateText = (value: string, maxLength: number) => {
   return text.slice(0, Math.max(0, maxLength - 1)).trimEnd() + '…';
 };
 
-const requirePublishedFilter = (filters: Record<string, any>) => {
-  // In Strapi v5, using publicationState: 'live' in entityService is the preferred way.
-  // We don't necessarily need to manually add the publishedAt filter if 'live' is set,
-  // but if we do, we should ensure it's the correct syntax.
-  if (filters.publishedAt) return;
-  // filters.publishedAt = { $notNull: true }; // Removing this to let publicationState: 'live' handle it
-};
-
 const buildSeoTitle = (title: string, categoryName: string) => {
   const rawTitle = String(title || '').trim();
   const baseTitle = rawTitle || 'रामपुर न्यूज़';
@@ -663,85 +655,84 @@ export default factories.createCoreController('api::article.article', ({ strapi 
 
   return {
     async featured(ctx) {
-    const limit = parseLimit(ctx.query.limit, 10);
-    const origin = ctx.request.origin || '';
-    const entities = await es.findMany('api::article.article', {
-      filters: { 
-        isFeatured: true,
-        publishedAt: { $notNull: true }
-      },
-      sort: { [DEFAULT_SORT_FIELD]: 'desc' },
-      populate: articlePopulate,
-      limit,
-    });
-    return (entities as any[]).map((e) => normalizeArticle(e, origin));
-  },
-
-  async breaking(ctx) {
-    const limit = parseLimit(ctx.query.limit, 10);
-    const origin = ctx.request.origin || '';
-    const entities = await es.findMany('api::article.article', {
-      filters: { 
-        isBreaking: true,
-        publishedAt: { $notNull: true }
-      },
-      sort: { [DEFAULT_SORT_FIELD]: 'desc' },
-      populate: articlePopulate,
-      limit,
-    });
-    return (entities as any[]).map((e) => normalizeArticle(e, origin));
-  },
-
-  async hero(ctx) {
-    const totalLimit = parseLimit(ctx.query.limit, 15);
-    const limit = Math.max(1, Math.min(totalLimit, MAX_LIMIT));
-    const origin = ctx.request.origin || '';
-
-    const featuredLimit = Math.min(3, limit);
-    const breakingLimit = Math.max(0, limit - featuredLimit);
-
-    const [featuredEntities, breakingCandidates] = await Promise.all([
-      es.findMany('api::article.article', {
-        filters: {
-          isFeatured: true,
-          publishedAt: { $notNull: true }
-        },
-        sort: { [DEFAULT_SORT_FIELD]: 'desc' },
-        populate: articlePopulate,
-        limit: featuredLimit,
-      }),
-      es.findMany('api::article.article', {
-        filters: {
-          isBreaking: true,
-          publishedAt: { $notNull: true }
-        },
-        sort: { [DEFAULT_SORT_FIELD]: 'desc' },
-        populate: articlePopulate,
-        limit: limit * 2,
-      }),
-    ]);
-
-    const featuredList = Array.isArray(featuredEntities) ? featuredEntities : [];
-    const featuredIds = new Set((featuredList as any[]).map((e) => e.id));
-
-    const breakingListRaw = Array.isArray(breakingCandidates) ? (breakingCandidates as any[]) : [];
-    const breakingList = breakingListRaw.filter((e) => !featuredIds.has(e.id)).slice(0, breakingLimit);
-
-    let combined = [...featuredList, ...breakingList];
-
-    if (combined.length === 0) {
-      combined = await es.findMany('api::article.article', {
+      const limit = parseLimit(ctx.query.limit, 10);
+      const origin = ctx.request.origin || '';
+      const entities = await es.findMany('api::article.article', {
         filters: { 
-          publishedAt: { $notNull: true }
+          isFeatured: true,
         },
         sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
         limit,
+        publicationState: 'live',
       });
-    }
+      return (entities as any[]).map((e) => normalizeArticle(e, origin));
+    },
 
-    return (combined as any[]).map((e) => normalizeArticle(e, origin));
-  },
+    async breaking(ctx) {
+      const limit = parseLimit(ctx.query.limit, 10);
+      const origin = ctx.request.origin || '';
+      const entities = await es.findMany('api::article.article', {
+        filters: { 
+          isBreaking: true,
+        },
+        sort: { [DEFAULT_SORT_FIELD]: 'desc' },
+        populate: articlePopulate,
+        limit,
+        publicationState: 'live',
+      });
+      return (entities as any[]).map((e) => normalizeArticle(e, origin));
+    },
+
+    async hero(ctx) {
+      const totalLimit = parseLimit(ctx.query.limit, 15);
+      const limit = Math.max(1, Math.min(totalLimit, MAX_LIMIT));
+      const origin = ctx.request.origin || '';
+
+      const featuredLimit = Math.min(3, limit);
+      const breakingLimit = Math.max(0, limit - featuredLimit);
+
+      const [featuredEntities, breakingCandidates] = await Promise.all([
+        es.findMany('api::article.article', {
+          filters: {
+            isFeatured: true,
+          },
+          sort: { [DEFAULT_SORT_FIELD]: 'desc' },
+          populate: articlePopulate,
+          limit: featuredLimit,
+          publicationState: 'live',
+        }),
+        es.findMany('api::article.article', {
+          filters: {
+            isBreaking: true,
+          },
+          sort: { [DEFAULT_SORT_FIELD]: 'desc' },
+          populate: articlePopulate,
+          limit: limit * 2,
+          publicationState: 'live',
+        }),
+      ]);
+
+      const featuredList = Array.isArray(featuredEntities) ? featuredEntities : [];
+      const featuredIds = new Set((featuredList as any[]).map((e) => e.id));
+
+      const breakingListRaw = Array.isArray(breakingCandidates) ? (breakingCandidates as any[]) : [];
+      const breakingList = breakingListRaw.filter((e) => !featuredIds.has(e.id)).slice(0, breakingLimit);
+
+      let combined = [...featuredList, ...breakingList];
+
+      if (combined.length === 0) {
+        combined = await es.findMany('api::article.article', {
+          filters: {},
+          sort: { [DEFAULT_SORT_FIELD]: 'desc' },
+          populate: articlePopulate,
+          limit,
+          publicationState: 'live',
+        });
+      }
+
+      return (combined as any[]).map((e) => normalizeArticle(e, origin));
+    },
 
     async newsSitemap(ctx) {
       const origin = getPublicOrigin(ctx) || SITE_URL;
@@ -860,422 +851,407 @@ Sitemap: ${origin}/news-sitemap.xml
 `;
     },
 
-  async trending(ctx) {
-    const limit = parseLimit(ctx.query.limit, 10);
-    const origin = ctx.request.origin || '';
-    const entities = await es.findMany('api::article.article', {
-      filters: { 
-        publishedAt: { $notNull: true }
-      },
-      sort: { views: 'desc' },
-      populate: articlePopulate,
-      limit,
-    });
-    return (entities as any[]).map((e) => normalizeArticle(e, origin));
-  },
-
-  async byCategory(ctx) {
-    const limit = parseLimit(ctx.query.limit, 25);
-    const offset = parseNumber(ctx.query.offset) ?? 0;
-    const categorySlug = parseString(ctx.params.slug);
-    if (!categorySlug) {
-      ctx.badRequest('Category slug is required');
-      return;
-    }
-    const origin = ctx.request.origin || '';
-
-    const filters = {
-      $and: [
-        {
-          $or: [
-            { category: { slug: categorySlug } },
-            { categories: { slug: categorySlug } },
-          ],
-        },
-        {
-          publishedAt: { $notNull: true },
-        },
-      ],
-    };
-
-    const [entities, total] = await Promise.all([
-      es.findMany('api::article.article', {
-        filters,
-        sort: { [DEFAULT_SORT_FIELD]: 'desc' },
+    async trending(ctx) {
+      const limit = parseLimit(ctx.query.limit, 10);
+      const origin = ctx.request.origin || '';
+      const entities = await es.findMany('api::article.article', {
+        filters: {},
+        sort: { views: 'desc' },
         populate: articlePopulate,
-        start: offset,
         limit,
-      }),
-      es.count('api::article.article', { filters }),
-    ]);
-
-    const pageSize = limit;
-    const page = pageSize > 0 ? Math.floor(offset / pageSize) + 1 : 1;
-    const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
-
-    return {
-      data: (entities as any[]).map((e) => normalizeArticle(e, origin)),
-      total,
-      page,
-      pageSize,
-      totalPages,
-    };
-  },
-
-  async search(ctx) {
-    const limit = parseLimit(ctx.query.limit, 25);
-    const offset = parseNumber(ctx.query.offset) ?? 0;
-    const q = parseString(ctx.query.q);
-    if (!q) {
-      return {
-        data: [],
-        total: 0,
-        page: 1,
-        pageSize: limit,
-        totalPages: 0,
-      };
-    }
-    const origin = ctx.request.origin || '';
-
-    const filters: Record<string, any> = {
-      $and: [
-        {
-          $or: [
-            { title: { $containsi: q } },
-            { excerpt: { $containsi: q } },
-            { content: { $containsi: q } },
-          ],
-        },
-        {
-          publishedAt: { $notNull: true },
-        },
-      ],
-    };
-
-    const [entities, total] = await Promise.all([
-      es.findMany('api::article.article', {
-        filters,
-        sort: { [DEFAULT_SORT_FIELD]: 'desc' },
-        populate: articlePopulate,
-        start: offset,
-        limit,
-      }),
-      es.count('api::article.article', { filters }),
-    ]);
-
-    const pageSize = limit;
-    const page = pageSize > 0 ? Math.floor(offset / pageSize) + 1 : 1;
-    const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
-
-    return {
-      data: (entities as any[]).map((e) => normalizeArticle(e, origin)),
-      total,
-      page,
-      pageSize,
-      totalPages,
-    };
-  },
-
-  async adminFind(ctx) {
-    const limit = parseLimit(ctx.query.limit, 25);
-    const offset = parseNumber(ctx.query.offset) ?? 0;
-    const category = parseString(ctx.query.category);
-    const parent = parseString(ctx.query.parent);
-    const status = parseString(ctx.query.status);
-    const featured = parseBoolean(ctx.query.featured);
-    const breaking = parseBoolean(ctx.query.breaking);
-    const search = parseString(ctx.query.search);
-    const author = parseString(ctx.query.author);
-    const orderBy = parseString(ctx.query.orderBy) ?? DEFAULT_SORT_FIELD;
-    const order = (parseString(ctx.query.order) ?? 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
-    const origin = ctx.request.origin || '';
-
-    const filters: Record<string, any> = {};
-    if (category || parent) {
-      filters.$and = filters.$and || [];
-      const or: any[] = [];
-      if (category) {
-        or.push({ category: { slug: category } }, { categories: { slug: category } });
-      }
-      if (parent) {
-        or.push({ category: { parent: { slug: parent } } }, { categories: { parent: { slug: parent } } });
-      }
-      filters.$and.push({ $or: or });
-    }
-    if (featured !== undefined) filters.isFeatured = featured;
-    if (breaking !== undefined) filters.isBreaking = breaking;
-
-    if (author) {
-      filters.author = author.includes('@') ? { email: author } : { $or: [{ name: author }, { nameHindi: author }] };
-    }
-
-    if (search) {
-      filters.$or = [
-        { title: { $containsi: search } },
-        { excerpt: { $containsi: search } },
-        { content: { $containsi: search } },
-      ];
-    }
-
-    if (status === 'published') {
-      filters.publishedAt = { $notNull: true };
-    } else if (status === 'draft') {
-      filters.publishedAt = { $null: true };
-    }
-
-    const sortKeyWhitelist = new Set(['publishedAt', 'publishedDate', 'views', 'title', 'createdAt', 'updatedAt']);
-    const sortFieldRaw = sortKeyWhitelist.has(orderBy) ? orderBy : 'publishedAt';
-    const sortField = sortFieldRaw === 'publishedDate' ? 'publishedAt' : sortFieldRaw;
-    const sort = { [sortField]: order };
-
-    const [entities, total] = await Promise.all([
-      es.findMany('api::article.article', {
-        filters,
-        sort,
-        populate: articlePopulate,
-        publicationState: 'preview',
-        start: offset,
-        limit,
-      }),
-      es.count('api::article.article', { filters, publicationState: 'preview' }),
-    ]);
-
-    const pageSize = limit;
-    const page = pageSize > 0 ? Math.floor(offset / pageSize) + 1 : 1;
-    const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
-
-    return {
-      data: (entities as any[]).map((e) => normalizeArticle(e, origin)),
-      total,
-      page,
-      pageSize,
-      totalPages,
-    };
-  },
-
-  async find(ctx) {
-    const limit = parseLimit(ctx.query.limit, 25);
-    const offset = parseNumber(ctx.query.offset) ?? 0;
-    const category = parseString(ctx.query.category);
-    const parent = parseString(ctx.query.parent);
-    const featured = parseBoolean(ctx.query.featured);
-    const breaking = parseBoolean(ctx.query.breaking);
-    const search = parseString(ctx.query.search);
-    const author = parseString(ctx.query.author);
-    const orderBy = parseString(ctx.query.orderBy) ?? DEFAULT_SORT_FIELD;
-    const order = (parseString(ctx.query.order) ?? 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
-    const origin = getPublicOrigin(ctx);
-
-    const filters: Record<string, any> = {
-      $and: [
-        {
-          publishedAt: { $notNull: true },
-        },
-      ],
-    };
-
-    if (category || parent) {
-      const or: any[] = [];
-      if (category) {
-        or.push({ category: { slug: category } }, { categories: { slug: category } });
-      }
-      if (parent) {
-        or.push({ category: { parent: { slug: parent } } }, { categories: { parent: { slug: parent } } });
-      }
-      filters.$and.push({ $or: or });
-    }
-    if (featured !== undefined) filters.isFeatured = featured;
-    if (breaking !== undefined) filters.isBreaking = breaking;
-    if (author) {
-      filters.$and.push({
-        author: author.includes('@') ? { email: author } : { $or: [{ name: author }, { nameHindi: author }] },
+        publicationState: 'live',
       });
-    }
-    if (search) {
-      filters.$and.push({
+      return (entities as any[]).map((e) => normalizeArticle(e, origin));
+    },
+
+    async byCategory(ctx) {
+      const limit = parseLimit(ctx.query.limit, 25);
+      const offset = parseNumber(ctx.query.offset) ?? 0;
+      const categorySlug = parseString(ctx.params.slug);
+      if (!categorySlug) {
+        ctx.badRequest('Category slug is required');
+        return;
+      }
+      const origin = ctx.request.origin || '';
+
+      const filters = {
         $or: [
+          { category: { slug: categorySlug } },
+          { categories: { slug: categorySlug } },
+        ],
+      };
+
+      const [entities, total] = await Promise.all([
+        es.findMany('api::article.article', {
+          filters,
+          sort: { [DEFAULT_SORT_FIELD]: 'desc' },
+          populate: articlePopulate,
+          start: offset,
+          limit,
+          publicationState: 'live',
+        }),
+        es.count('api::article.article', { filters, publicationState: 'live' }),
+      ]);
+
+      const pageSize = limit;
+      const page = pageSize > 0 ? Math.floor(offset / pageSize) + 1 : 1;
+      const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
+
+      return {
+        data: (entities as any[]).map((e) => normalizeArticle(e, origin)),
+        total,
+        page,
+        pageSize,
+        totalPages,
+      };
+    },
+
+    async search(ctx) {
+      const limit = parseLimit(ctx.query.limit, 25);
+      const offset = parseNumber(ctx.query.offset) ?? 0;
+      const q = parseString(ctx.query.q);
+      if (!q) {
+        return {
+          data: [],
+          total: 0,
+          page: 1,
+          pageSize: limit,
+          totalPages: 0,
+        };
+      }
+      const origin = ctx.request.origin || '';
+
+      const filters: Record<string, any> = {
+        $or: [
+          { title: { $containsi: q } },
+          { excerpt: { $containsi: q } },
+          { content: { $containsi: q } },
+        ],
+      };
+
+      const [entities, total] = await Promise.all([
+        es.findMany('api::article.article', {
+          filters,
+          sort: { [DEFAULT_SORT_FIELD]: 'desc' },
+          populate: articlePopulate,
+          start: offset,
+          limit,
+          publicationState: 'live',
+        }),
+        es.count('api::article.article', { filters, publicationState: 'live' }),
+      ]);
+
+      const pageSize = limit;
+      const page = pageSize > 0 ? Math.floor(offset / pageSize) + 1 : 1;
+      const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
+
+      return {
+        data: (entities as any[]).map((e) => normalizeArticle(e, origin)),
+        total,
+        page,
+        pageSize,
+        totalPages,
+      };
+    },
+
+    async adminFind(ctx) {
+      const limit = parseLimit(ctx.query.limit, 25);
+      const offset = parseNumber(ctx.query.offset) ?? 0;
+      const category = parseString(ctx.query.category);
+      const parent = parseString(ctx.query.parent);
+      const status = parseString(ctx.query.status);
+      const featured = parseBoolean(ctx.query.featured);
+      const breaking = parseBoolean(ctx.query.breaking);
+      const search = parseString(ctx.query.search);
+      const author = parseString(ctx.query.author);
+      const orderBy = parseString(ctx.query.orderBy) ?? DEFAULT_SORT_FIELD;
+      const order = (parseString(ctx.query.order) ?? 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
+      const origin = ctx.request.origin || '';
+
+      const filters: Record<string, any> = {};
+      if (category || parent) {
+        filters.$and = filters.$and || [];
+        const or: any[] = [];
+        if (category) {
+          or.push({ category: { slug: category } }, { categories: { slug: category } });
+        }
+        if (parent) {
+          or.push({ category: { parent: { slug: parent } } }, { categories: { parent: { slug: parent } } });
+        }
+        filters.$and.push({ $or: or });
+      }
+      if (featured !== undefined) filters.isFeatured = featured;
+      if (breaking !== undefined) filters.isBreaking = breaking;
+
+      if (author) {
+        filters.author = author.includes('@') ? { email: author } : { $or: [{ name: author }, { nameHindi: author }] };
+      }
+
+      if (search) {
+        filters.$or = [
           { title: { $containsi: search } },
           { excerpt: { $containsi: search } },
           { content: { $containsi: search } },
-        ],
-      });
-    }
+        ];
+      }
 
-    const sort = { [resolveSortField(orderBy)]: order };
-    const [entities, total] = await Promise.all([
-      es.findMany('api::article.article', {
-        filters,
-        sort,
+      if (status === 'published') {
+        filters.publishedAt = { $notNull: true };
+      } else if (status === 'draft') {
+        filters.publishedAt = { $null: true };
+      }
+
+      const sortKeyWhitelist = new Set(['publishedAt', 'publishedDate', 'views', 'title', 'createdAt', 'updatedAt']);
+      const sortFieldRaw = sortKeyWhitelist.has(orderBy) ? orderBy : 'publishedAt';
+      const sortField = sortFieldRaw === 'publishedDate' ? 'publishedAt' : sortFieldRaw;
+      const sort = { [sortField]: order };
+
+      const [entities, total] = await Promise.all([
+        es.findMany('api::article.article', {
+          filters,
+          sort,
+          populate: articlePopulate,
+          publicationState: 'preview',
+          start: offset,
+          limit,
+        }),
+        es.count('api::article.article', { filters, publicationState: 'preview' }),
+      ]);
+
+      const pageSize = limit;
+      const page = pageSize > 0 ? Math.floor(offset / pageSize) + 1 : 1;
+      const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
+
+      return {
+        data: (entities as any[]).map((e) => normalizeArticle(e, origin)),
+        total,
+        page,
+        pageSize,
+        totalPages,
+      };
+    },
+
+    async find(ctx) {
+      const limit = parseLimit(ctx.query.limit, 25);
+      const offset = parseNumber(ctx.query.offset) ?? 0;
+      const category = parseString(ctx.query.category);
+      const parent = parseString(ctx.query.parent);
+      const featured = parseBoolean(ctx.query.featured);
+      const breaking = parseBoolean(ctx.query.breaking);
+      const search = parseString(ctx.query.search);
+      const author = parseString(ctx.query.author);
+      const orderBy = parseString(ctx.query.orderBy) ?? DEFAULT_SORT_FIELD;
+      const order = (parseString(ctx.query.order) ?? 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
+      const origin = getPublicOrigin(ctx);
+
+      const filters: Record<string, any> = {};
+
+      if (category || parent) {
+        filters.$and = filters.$and || [];
+        const or: any[] = [];
+        if (category) {
+          or.push({ category: { slug: category } }, { categories: { slug: category } });
+        }
+        if (parent) {
+          or.push({ category: { parent: { slug: parent } } }, { categories: { parent: { slug: parent } } });
+        }
+        filters.$and.push({ $or: or });
+      }
+      if (featured !== undefined) filters.isFeatured = featured;
+      if (breaking !== undefined) filters.isBreaking = breaking;
+      if (author) {
+        filters.$and = filters.$and || [];
+        filters.$and.push({
+          author: author.includes('@') ? { email: author } : { $or: [{ name: author }, { nameHindi: author }] },
+        });
+      }
+      if (search) {
+        filters.$and = filters.$and || [];
+        filters.$and.push({
+          $or: [
+            { title: { $containsi: search } },
+            { excerpt: { $containsi: search } },
+            { content: { $containsi: search } },
+          ],
+        });
+      }
+
+      const sort = { [resolveSortField(orderBy)]: order };
+      const [entities, total] = await Promise.all([
+        es.findMany('api::article.article', {
+          filters,
+          sort,
+          populate: articlePopulate,
+          start: offset,
+          limit,
+          publicationState: 'live',
+        }),
+        es.count('api::article.article', { filters, publicationState: 'live' }),
+      ]);
+
+      const pageSize = limit;
+      const page = pageSize > 0 ? Math.floor(offset / pageSize) + 1 : 1;
+      const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
+
+      return {
+        data: (entities as any[]).map((e) => normalizeArticle(e, origin)),
+        total,
+        page,
+        pageSize,
+        totalPages,
+      };
+    },
+
+    async adminFindOne(ctx) {
+      const id = ctx.params.id;
+      const origin = getPublicOrigin(ctx);
+      const entity = await es.findOne('api::article.article', id, {
         populate: articlePopulate,
-        start: offset,
-        limit,
-      }),
-      es.count('api::article.article', { filters }),
-    ]);
+        publicationState: 'preview',
+      });
+      if (!entity) {
+        ctx.notFound('Article not found');
+        return;
+      }
+      return normalizeArticle(entity, origin);
+    },
 
-    const pageSize = limit;
-    const page = pageSize > 0 ? Math.floor(offset / pageSize) + 1 : 1;
-    const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
+    async findOne(ctx) {
+      const id = ctx.params.id;
+      const origin = getPublicOrigin(ctx);
+      const entity = await es.findOne('api::article.article', id, {
+        populate: articlePopulate,
+        publicationState: 'live',
+      });
+      if (!entity) {
+        ctx.notFound('Article not found');
+        return;
+      }
+      return normalizeArticle(entity, origin);
+    },
 
-    return {
-      data: (entities as any[]).map((e) => normalizeArticle(e, origin)),
-      total,
-      page,
-      pageSize,
-      totalPages,
-    };
-  },
+    async adminFindBySlug(ctx) {
+      const origin = getPublicOrigin(ctx);
+      const slug = ctx.params.slug;
+      const entities = await es.findMany('api::article.article', {
+        filters: { slug },
+        populate: articlePopulate,
+        publicationState: 'preview',
+        limit: 1,
+      });
+      const entity = (entities as any[])[0];
+      if (!entity) {
+        ctx.notFound('Article not found');
+        return;
+      }
+      return normalizeArticle(entity, origin);
+    },
 
-  async adminFindOne(ctx) {
-    const id = ctx.params.id;
-    const origin = getPublicOrigin(ctx);
-    const entity = await es.findOne('api::article.article', id, {
-      populate: articlePopulate,
-      publicationState: 'preview',
-    });
-    if (!entity) {
-      ctx.notFound('Article not found');
-      return;
-    }
-    return normalizeArticle(entity, origin);
-  },
+    async findBySlug(ctx) {
+      const slug = ctx.params.slug;
+      const origin = getPublicOrigin(ctx);
+      const entities = await es.findMany('api::article.article', {
+        filters: { slug },
+        populate: articlePopulate,
+        publicationState: 'live',
+        limit: 1,
+      });
+      const entity = (entities as any[])[0];
+      if (!entity) {
+        ctx.notFound('Article not found');
+        return;
+      }
+      return normalizeArticle(entity, origin);
+    },
 
-  async findOne(ctx) {
-    const id = ctx.params.id;
-    const origin = getPublicOrigin(ctx);
-    const entity = await es.findOne('api::article.article', id, {
-      populate: articlePopulate,
-      publicationState: 'live',
-    });
-    if (!entity) {
-      ctx.notFound('Article not found');
-      return;
-    }
-    return normalizeArticle(entity, origin);
-  },
+    async create(ctx) {
+      const origin = getPublicOrigin(ctx);
+      const input = extractData(ctx.request.body);
+      try {
+        const data = await buildStrapiArticleData(input, origin, false);
+        const entity = await es.create('api::article.article', {
+          data,
+          populate: articlePopulate,
+        });
+        return normalizeArticle(entity, origin);
+      } catch (error: any) {
+        if (error?.message === 'CATEGORY_REQUIRED') {
+          ctx.badRequest('Category is required');
+          return;
+        }
+        if (error?.message === 'AUTHOR_REQUIRED') {
+          ctx.badRequest('Author is required');
+          return;
+        }
+        throw error;
+      }
+    },
 
-  async adminFindBySlug(ctx) {
-    const origin = getPublicOrigin(ctx);
-    const slug = ctx.params.slug;
-    const entities = await es.findMany('api::article.article', {
-      filters: { slug },
-      populate: articlePopulate,
-      publicationState: 'preview',
-      limit: 1,
-    });
-    const entity = (entities as any[])[0];
-    if (!entity) {
-      ctx.notFound('Article not found');
-      return;
-    }
-    return normalizeArticle(entity, origin);
-  },
-
-  async findBySlug(ctx) {
-    const slug = ctx.params.slug;
-    const origin = getPublicOrigin(ctx);
-    const entities = await es.findMany('api::article.article', {
-      filters: { slug },
-      populate: articlePopulate,
-      publicationState: 'live',
-      limit: 1,
-    });
-    const entity = (entities as any[])[0];
-    if (!entity) {
-      ctx.notFound('Article not found');
-      return;
-    }
-    return normalizeArticle(entity, origin);
-  },
-
-  async create(ctx) {
-    const origin = getPublicOrigin(ctx);
-    const input = extractData(ctx.request.body);
-    try {
-      const data = await buildStrapiArticleData(input, origin, false);
-      const entity = await es.create('api::article.article', {
+    async update(ctx) {
+      const id = ctx.params.id;
+      const origin = getPublicOrigin(ctx);
+      const input = extractData(ctx.request.body);
+      const data = await buildStrapiArticleData(input, origin, true);
+      if (typeof data.slug === 'string' && data.slug.trim()) {
+        data.slug = await ensureUniqueSlug(data.slug, Number(id));
+      }
+      const entity = await es.update('api::article.article', id, {
         data,
         populate: articlePopulate,
       });
       return normalizeArticle(entity, origin);
-    } catch (error: any) {
-      if (error?.message === 'CATEGORY_REQUIRED') {
-        ctx.badRequest('Category is required');
+    },
+
+    async publish(ctx) {
+      const id = String(ctx.params.id || '').trim();
+      if (!id) {
+        ctx.badRequest('Invalid id');
         return;
       }
-      if (error?.message === 'AUTHOR_REQUIRED') {
-        ctx.badRequest('Author is required');
+
+      const origin = getPublicOrigin(ctx);
+      const documentId = Number.isFinite(Number(id)) ? Number(id) : id;
+      const docsFactory = (strapi as any).documents;
+      const docs = typeof docsFactory === 'function' ? docsFactory.call(strapi, 'api::article.article') : null;
+      if (docs && typeof docs.publish === 'function') {
+        await docs.publish({ documentId });
+      } else {
+        await es.update('api::article.article', id, { data: { publishedAt: new Date().toISOString() } });
+      }
+      const entity = await es.findOne('api::article.article', id, {
+        populate: articlePopulate,
+        publicationState: 'preview',
+      });
+      return normalizeArticle(entity, origin);
+    },
+
+    async unpublish(ctx) {
+      const id = String(ctx.params.id || '').trim();
+      if (!id) {
+        ctx.badRequest('Invalid id');
         return;
       }
-      throw error;
-    }
-  },
 
-  async update(ctx) {
-    const id = ctx.params.id;
-    const origin = getPublicOrigin(ctx);
-    const input = extractData(ctx.request.body);
-    const data = await buildStrapiArticleData(input, origin, true);
-    if (typeof data.slug === 'string' && data.slug.trim()) {
-      data.slug = await ensureUniqueSlug(data.slug, Number(id));
-    }
-    const entity = await es.update('api::article.article', id, {
-      data,
-      populate: articlePopulate,
-    });
-    return normalizeArticle(entity, origin);
-  },
+      const origin = getPublicOrigin(ctx);
+      const documentId = Number.isFinite(Number(id)) ? Number(id) : id;
+      const docsFactory = (strapi as any).documents;
+      const docs = typeof docsFactory === 'function' ? docsFactory.call(strapi, 'api::article.article') : null;
+      if (docs && typeof docs.unpublish === 'function') {
+        await docs.unpublish({ documentId });
+      } else {
+        await es.update('api::article.article', id, { data: { publishedAt: null } });
+      }
+      const entity = await es.findOne('api::article.article', id, {
+        populate: articlePopulate,
+        publicationState: 'preview',
+      });
+      return normalizeArticle(entity, origin);
+    },
 
-  async publish(ctx) {
-    const id = String(ctx.params.id || '').trim();
-    if (!id) {
-      ctx.badRequest('Invalid id');
-      return;
-    }
-
-    const origin = getPublicOrigin(ctx);
-    const documentId = Number.isFinite(Number(id)) ? Number(id) : id;
-    const docsFactory = (strapi as any).documents;
-    const docs = typeof docsFactory === 'function' ? docsFactory.call(strapi, 'api::article.article') : null;
-    if (docs && typeof docs.publish === 'function') {
-      await docs.publish({ documentId });
-    } else {
-      await es.update('api::article.article', id, { data: { publishedAt: new Date().toISOString() } });
-    }
-    const entity = await es.findOne('api::article.article', id, {
-      populate: articlePopulate,
-      publicationState: 'preview',
-    });
-    return normalizeArticle(entity, origin);
-  },
-
-  async unpublish(ctx) {
-    const id = String(ctx.params.id || '').trim();
-    if (!id) {
-      ctx.badRequest('Invalid id');
-      return;
-    }
-
-    const origin = getPublicOrigin(ctx);
-    const documentId = Number.isFinite(Number(id)) ? Number(id) : id;
-    const docsFactory = (strapi as any).documents;
-    const docs = typeof docsFactory === 'function' ? docsFactory.call(strapi, 'api::article.article') : null;
-    if (docs && typeof docs.unpublish === 'function') {
-      await docs.unpublish({ documentId });
-    } else {
-      await es.update('api::article.article', id, { data: { publishedAt: null } });
-    }
-    const entity = await es.findOne('api::article.article', id, {
-      populate: articlePopulate,
-      publicationState: 'preview',
-    });
-    return normalizeArticle(entity, origin);
-  },
-
-  async delete(ctx) {
-    const id = ctx.params.id;
-    await es.delete('api::article.article', id);
-    ctx.status = 204;
-  },
+    async delete(ctx) {
+      const id = ctx.params.id;
+      await es.delete('api::article.article', id);
+      ctx.status = 204;
+    },
   };
 });
