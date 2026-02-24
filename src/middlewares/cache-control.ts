@@ -1,5 +1,19 @@
 export default (config: any, { strapi }: { strapi: any }) => {
   return async (ctx: any, next: any) => {
+    if (ctx.method === 'GET') {
+      const path = ctx.request?.path || '';
+      const isApi = path.startsWith('/api');
+      const isAdminLike = path.startsWith('/admin') || path.startsWith('/api/admin') || path.includes('/admin');
+      const publicationState = ctx.query?.publicationState;
+      const isPublic = !isAdminLike && !ctx?.state?.user;
+
+      if (isApi && isPublic) {
+        if (!publicationState || publicationState === 'preview') {
+          ctx.query.publicationState = 'live';
+        }
+      }
+    }
+
     await next();
     if (ctx.method !== 'GET') return;
 
