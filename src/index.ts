@@ -199,6 +199,61 @@ export default {
       }
     }
 
+    const shouldBackfillPublishedAt = (() => {
+      const raw = String(process.env.BACKFILL_MISSING_PUBLISHED_AT ?? '').trim().toLowerCase();
+      return raw === '1' || raw === 'true' || raw === 'yes';
+    })();
+
+    if (shouldBackfillPublishedAt) {
+      const nowIso = new Date().toISOString();
+      let alreadyDone = false;
+      try {
+        const store = strapi.store({ type: 'core', name: 'rampur-news' });
+        const done = await store.get({ key: 'publishedAtBackfillDone' });
+        alreadyDone = done === true;
+        if (!alreadyDone) {
+          await strapi.db.query('api::article.article').updateMany({
+            where: {
+              publishedAt: null,
+              scheduledAt: null,
+              $or: [
+                { views: { $gt: 0 } },
+                { is_featured: true },
+                { is_breaking: true },
+                { isFeatured: true },
+                { isBreaking: true },
+                { heroPriority: { $notNull: true } },
+              ],
+            },
+            data: { publishedAt: nowIso },
+          });
+          await store.set({ key: 'publishedAtBackfillDone', value: true });
+        }
+      } catch {
+        if (!alreadyDone) {
+          try {
+            await strapi.db.query('api::article.article').updateMany({
+              where: {
+                publishedAt: null,
+                scheduledAt: null,
+                $or: [
+                  { views: { $gt: 0 } },
+                  { is_featured: true },
+                  { is_breaking: true },
+                  { isFeatured: true },
+                  { isBreaking: true },
+                  { heroPriority: { $notNull: true } },
+                ],
+              },
+              data: { publishedAt: nowIso },
+            });
+          } catch {
+            void 0;
+          }
+        }
+      }
+    }
+
     const bootstrapEmail = process.env.BOOTSTRAP_ADMIN_EMAIL;
     const bootstrapPassword = process.env.BOOTSTRAP_ADMIN_PASSWORD;
     if (bootstrapEmail && bootstrapPassword) {

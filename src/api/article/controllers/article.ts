@@ -246,6 +246,11 @@ const truncateText = (value: string, maxLength: number) => {
   return text.slice(0, Math.max(0, maxLength - 1)).trimEnd() + '…';
 };
 
+const requirePublishedFilter = (filters: Record<string, any>) => {
+  if (filters.publishedAt) return;
+  filters.publishedAt = { $notNull: true };
+};
+
 const buildSeoTitle = (title: string, categoryName: string) => {
   const rawTitle = String(title || '').trim();
   const baseTitle = rawTitle || 'रामपुर न्यूज़';
@@ -684,19 +689,17 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const status = parseString(input.status);
     const publishedDate = parseDateToISO(input.publishedDate);
     if (status === 'published') {
-      set('publishedAt', publishedDate ?? new Date().toISOString());
+      set('publishedAt', new Date().toISOString());
+      set('scheduledAt', null);
     } else if (status === 'draft') {
       set('publishedAt', null);
+      set('scheduledAt', null);
     } else if (status === 'scheduled') {
       set('publishedAt', null);
       if (!data.scheduledAt) {
         const next = parseDateToISO(input.scheduledAt) ?? publishedDate;
         if (next) set('scheduledAt', next);
       }
-    } else if (!isPartial && publishedDate) {
-      set('publishedAt', publishedDate);
-    } else if (isPartial && ('publishedDate' in input) && publishedDate) {
-      set('publishedAt', publishedDate);
     }
 
     if (!isPartial) {
@@ -805,7 +808,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const limit = parseLimit(ctx.query.limit, 10);
     const origin = ctx.request.origin || '';
     const entities = await es.findMany('api::article.article', {
-      filters: { isFeatured: true },
+      filters: { isFeatured: true, publishedAt: { $notNull: true } },
       sort: { [DEFAULT_SORT_FIELD]: 'desc' },
       populate: articlePopulate,
       publicationState: 'live',
@@ -818,7 +821,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const limit = parseLimit(ctx.query.limit, 10);
     const origin = ctx.request.origin || '';
     const entities = await es.findMany('api::article.article', {
-      filters: { isBreaking: true },
+      filters: { isBreaking: true, publishedAt: { $notNull: true } },
       sort: { [DEFAULT_SORT_FIELD]: 'desc' },
       populate: articlePopulate,
       publicationState: 'live',
@@ -839,6 +842,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       es.findMany('api::article.article', {
         filters: {
           isFeatured: true,
+          publishedAt: { $notNull: true },
         },
         sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
@@ -848,6 +852,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       es.findMany('api::article.article', {
         filters: {
           isBreaking: true,
+          publishedAt: { $notNull: true },
         },
         sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
@@ -866,6 +871,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
 
     if (combined.length === 0) {
       combined = await es.findMany('api::article.article', {
+        filters: { publishedAt: { $notNull: true } },
         sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
         publicationState: 'live',
@@ -931,6 +937,7 @@ ${urls.join('')}
 
       const [articles, categories, authors] = await Promise.all([
         es.findMany('api::article.article', {
+          filters: { publishedAt: { $notNull: true } },
           sort: { publishedAt: 'desc' },
           limit: 5000,
           populate: { category: true },
@@ -997,6 +1004,7 @@ Sitemap: ${origin}/news-sitemap.xml
     const limit = parseLimit(ctx.query.limit, 10);
     const origin = ctx.request.origin || '';
     const entities = await es.findMany('api::article.article', {
+      filters: { publishedAt: { $notNull: true } },
       sort: { views: 'desc' },
       populate: articlePopulate,
       publicationState: 'live',
@@ -1018,6 +1026,7 @@ Sitemap: ${origin}/news-sitemap.xml
     const filters = {
       $or: [{ category: { slug: categorySlug } }, { categories: { slug: categorySlug } }],
     };
+    requirePublishedFilter(filters);
 
     const [entities, total] = await Promise.all([
       es.findMany('api::article.article', {
@@ -1069,6 +1078,7 @@ Sitemap: ${origin}/news-sitemap.xml
         { contentHindi: { $containsi: q } },
       ],
     };
+    requirePublishedFilter(filters);
 
     const [entities, total] = await Promise.all([
       es.findMany('api::article.article', {
@@ -1192,6 +1202,7 @@ Sitemap: ${origin}/news-sitemap.xml
     const origin = getPublicOrigin(ctx);
 
     const filters: Record<string, any> = {};
+    requirePublishedFilter(filters);
     if (category || parent) {
       filters.$and = filters.$and || [];
       const or: any[] = [];
@@ -1270,6 +1281,10 @@ Sitemap: ${origin}/news-sitemap.xml
       ctx.notFound('Article not found');
       return;
     }
+    if (!(entity as any)?.publishedAt) {
+      ctx.notFound('Article not found');
+      return;
+    }
     return normalizeArticle(entity, origin);
   },
 
@@ -1294,7 +1309,7 @@ Sitemap: ${origin}/news-sitemap.xml
     const slug = ctx.params.slug;
     const origin = getPublicOrigin(ctx);
     const entities = await es.findMany('api::article.article', {
-      filters: { slug },
+      filters: { slug, publishedAt: { $notNull: true } },
       populate: articlePopulate,
       publicationState: 'live',
       limit: 1,
