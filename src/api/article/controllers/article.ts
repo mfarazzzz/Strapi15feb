@@ -691,6 +691,8 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       const totalLimit = parseLimit(ctx.query.limit, 15);
       const limit = Math.max(1, Math.min(totalLimit, MAX_LIMIT));
       const origin = ctx.request.origin || '';
+      const now = Date.now();
+      const cutoff = new Date(now - 48 * 60 * 60 * 1000).toISOString();
 
       const featuredLimit = Math.min(3, limit);
       const breakingLimit = Math.max(0, limit - featuredLimit);
@@ -708,6 +710,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
         es.findMany('api::article.article', {
           filters: {
             isBreaking: true,
+            publishedAt: { $gte: cutoff },
           },
           sort: { [DEFAULT_SORT_FIELD]: 'desc' },
           populate: articlePopulate,
