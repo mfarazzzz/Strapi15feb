@@ -987,7 +987,13 @@ Sitemap: ${origin}/news-sitemap.xml
         filters.$and.push({ $or: or });
       }
       if (featured !== undefined) filters.isFeatured = featured;
-      if (breaking !== undefined) filters.isBreaking = breaking;
+      if (breaking !== undefined) {
+        filters.isBreaking = breaking;
+        if (breaking) {
+          const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+          filters.publishedAt = { $gte: cutoff };
+        }
+      }
 
       if (author) {
         filters.author = author.includes('@') ? { email: author } : { $or: [{ name: author }, { nameHindi: author }] };
@@ -1083,39 +1089,35 @@ Sitemap: ${origin}/news-sitemap.xml
         });
       }
 
+      // ===== STRICT POSTGRES SAFE SORT HANDLING =====
       let sort: any = ctx.query.sort;
 
       if (typeof sort === 'string') {
-        const [field, order] = sort.split(':');
-        if (field && order) {
-          const resolvedField = resolveSortField(field);
-          sort = { [resolvedField]: order };
-        }
+        const [fieldRaw, orderRaw] = sort.split(':');
+        const field = resolveSortField(fieldRaw);
+        const order = orderRaw === 'asc' ? 'asc' : 'desc';
+        sort = [{ [field]: order }];
       } else if (Array.isArray(sort)) {
-        const normalized = sort
+        sort = sort
           .filter((entry) => typeof entry === 'string')
           .map((entry) => {
-            const [field, order] = String(entry).split(':');
-            const resolvedField = resolveSortField(field);
-            return order ? `${resolvedField}:${order}` : resolvedField;
+            const [fieldRaw, orderRaw] = String(entry).split(':');
+            const field = resolveSortField(fieldRaw);
+            const order = orderRaw === 'asc' ? 'asc' : 'desc';
+            return { [field]: order };
           });
-        sort = normalized.length > 0 ? normalized : undefined;
       } else if (sort && typeof sort === 'object') {
-        if (sort.publishedDate) {
-          sort = { ...sort, publishedAt: sort.publishedDate };
-          delete sort.publishedDate;
+        const normalized: any[] = [];
+        for (const key of Object.keys(sort)) {
+          const field = resolveSortField(key);
+          const order = sort[key] === 'asc' ? 'asc' : 'desc';
+          normalized.push({ [field]: order });
         }
+        sort = normalized;
       }
 
-      if (!sort) {
-          const orderBy = parseString(ctx.query.orderBy);
-          const order = (parseString(ctx.query.order) ?? 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
-          
-          if (orderBy) {
-             sort = { [resolveSortField(orderBy)]: order };
-          } else {
-             sort = { [DEFAULT_SORT_FIELD]: 'desc' };
-          }
+      if (!sort || !Array.isArray(sort) || sort.length === 0) {
+        sort = [{ publishedAt: 'desc' }];
       }
 
       const [entities, total] = await Promise.all([
