@@ -88,7 +88,7 @@ export default {
       method: 'GET',
       path: '/articles/:id',
       handler: 'article.findOne',
-      config: { auth: false },
+      config: { auth: {}, policies: ['global::cms-role'] },
     },
     {
       method: 'POST',

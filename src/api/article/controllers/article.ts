@@ -57,6 +57,13 @@ const slugify = (value: string) =>
     .trim()
     .replace(/^-+|-+$/g, '');
 
+const normalizeSlugValue = (value: string) => {
+  const base = slugify(value);
+  if (!base) return '';
+  if (base.length <= 70) return base;
+  return base.slice(0, 70).replace(/-+$/g, '');
+};
+
 const parseBoolean = (value: unknown): boolean | undefined => {
   if (value === undefined || value === null) return undefined;
   if (typeof value === 'boolean') return value;
@@ -377,7 +384,8 @@ export default factories.createCoreController('api::article.article', ({ strapi 
   };
 
   const ensureUniqueSlug = async (base: string, excludeId?: number): Promise<string> => {
-    const root = slugify(base) || `article-${Date.now()}`;
+    const fallback = normalizeSlugValue(`article-${Date.now()}`) || `article-${Date.now()}`;
+    const root = normalizeSlugValue(base) || fallback;
     let candidate = root;
     let attempt = 1;
 
@@ -393,10 +401,13 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       if (excludeId && Number(existing.id) === excludeId) return candidate;
 
       attempt += 1;
-      candidate = `${root}-${attempt}`;
+      const suffix = String(attempt);
+      const maxBase = 70 - suffix.length - 1;
+      const trimmedRoot = root.length > maxBase ? root.slice(0, maxBase).replace(/-+$/g, '') : root;
+      candidate = `${trimmedRoot}-${suffix}`;
     }
 
-    return `${root}-${Date.now()}`;
+    return normalizeSlugValue(`${root}-${Date.now()}`) || `${root}-${Date.now()}`;
   };
 
   const parseRelationId = (value: unknown): number | undefined => {
@@ -488,6 +499,15 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     }
   };
 
+  const validateFeaturedImageWidth = async (imageId?: number | null) => {
+    if (!imageId) return;
+    const file = await es.findOne('plugin::upload.file', imageId, { fields: ['width'] });
+    const width = typeof file?.width === 'number' ? file.width : undefined;
+    if (width !== undefined && width < 1200) {
+      throw new Error('FEATURED_IMAGE_TOO_SMALL');
+    }
+  };
+
   const buildStrapiArticleData = async (input: any, origin: string, isPartial: boolean) => {
     const data: Record<string, any> = {};
 
@@ -506,7 +526,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     if (!isPartial || 'short_headline' in input) {
       const explicit = parseString(input.short_headline) ?? input.short_headline ?? undefined;
       const title = parseString(input.title) ?? (typeof data.title === 'string' ? data.title : '');
-      set('short_headline', explicit || truncateText(title, 110) || undefined);
+      set('short_headline', explicit || truncateText(title, 65) || undefined);
     }
     if (!isPartial || 'readTime' in input) set('readTime', parseString(input.readTime) ?? input.readTime ?? undefined);
     if (!isPartial || 'videoUrl' in input) set('videoUrl', parseString(input.videoUrl) ?? input.videoUrl ?? undefined);
@@ -730,7 +750,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       if (combined.length === 0) {
         combined = await es.findMany('api::article.article', {
           filters: {},
-          sort: { [DEFAULT_SORT_FIELD]: 'desc' },
+          sort: [{ [DEFAULT_SORT_FIELD]: 'desc' }],
           populate: articlePopulate,
           limit,
           publicationState: 'live',
@@ -749,7 +769,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
         filters: {
           publishedAt: { $gte: since },
         },
-        sort: { publishedAt: 'desc' },
+        sort: [{ publishedAt: 'desc' }],
         limit: 1000,
         populate: { featured_image: true, category: true },
         publicationState: 'live',
@@ -758,7 +778,14 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       const urls = (entities as any[]).map((entity) => {
         const slug = entity?.slug ? String(entity.slug) : '';
         const categorySlug = entity?.category?.slug ? String(entity.category.slug) : '';
-        const loc = `${origin}/${categorySlug}/${slug}`.replace(/\/+/g, '/').replace(':/', '://');
+        const canonicalRaw = entity?.canonicalUrl ? String(entity.canonicalUrl).trim() : '';
+        const canonical =
+          canonicalRaw && /^https?:\/\//i.test(canonicalRaw)
+            ? canonicalRaw
+            : canonicalRaw
+              ? `${origin}/${canonicalRaw.replace(/^\/+/, '')}`
+              : '';
+        const loc = (canonical || `${origin}/${categorySlug}/${slug}`).replace(/\/+/g, '/').replace(':/', '://');
         const publishedIso = formatIso(entity?.publishedAt || entity?.createdAt) || now.toISOString();
         const lastmod = formatIso(entity?.updatedAt || entity?.publishedAt) || publishedIso;
         const title = entity?.short_headline ? String(entity.short_headline) : entity?.title ? String(entity.title) : '';
@@ -795,7 +822,7 @@ ${urls.join('')}
       const [articles, categories, authors] = await Promise.all([
         es.findMany('api::article.article', {
           filters: { },
-          sort: { publishedAt: 'desc' },
+          sort: [{ publishedAt: 'desc' }],
           limit: 5000,
           populate: { category: true },
           publicationState: 'live',
@@ -821,11 +848,18 @@ ${urls.join('')}
         })),
         ...(articles as any[]).map((a) => {
           const categorySlug = a?.category?.slug ? String(a.category.slug) : '';
-          const loc = `${origin}/${categorySlug}/${a?.slug || ''}`.replace(/\/+/g, '/').replace(':/', '://');
+          const canonicalRaw = a?.canonicalUrl ? String(a.canonicalUrl).trim() : '';
+          const canonical =
+            canonicalRaw && /^https?:\/\//i.test(canonicalRaw)
+              ? canonicalRaw
+              : canonicalRaw
+                ? `${origin}/${canonicalRaw.replace(/^\/+/, '')}`
+                : '';
+          const loc = (canonical || `${origin}/${categorySlug}/${a?.slug || ''}`).replace(/\/+/g, '/').replace(':/', '://');
           const lastmod = formatIso(a?.updatedAt || a?.publishedAt) || now;
           return { loc, lastmod };
         }),
-      ].filter((u) => u.loc && !u.loc.includes('/tags') && !u.loc.includes('/tag') && !u.loc.includes('/admin'));
+      ].filter((u) => u.loc && !u.loc.includes('/tags') && !u.loc.includes('/tag') && !u.loc.includes('/admin') && !u.loc.includes('/api'));
 
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -1213,6 +1247,9 @@ Sitemap: ${origin}/news-sitemap.xml
       const input = extractData(ctx.request.body);
       try {
         const data = await buildStrapiArticleData(input, origin, false);
+        await validateFeaturedImageWidth(
+          typeof data.featured_image === 'number' ? data.featured_image : undefined,
+        );
         const entity = await es.create('api::article.article', {
           data,
           populate: articlePopulate,
@@ -1227,6 +1264,10 @@ Sitemap: ${origin}/news-sitemap.xml
           ctx.badRequest('Author is required');
           return;
         }
+        if (error?.message === 'FEATURED_IMAGE_TOO_SMALL') {
+          ctx.badRequest('Featured image width must be at least 1200px');
+          return;
+        }
         throw error;
       }
     },
@@ -1238,6 +1279,9 @@ Sitemap: ${origin}/news-sitemap.xml
       const data = await buildStrapiArticleData(input, origin, true);
       if (typeof data.slug === 'string' && data.slug.trim()) {
         data.slug = await ensureUniqueSlug(data.slug, Number(id));
+      }
+      if (typeof data.featured_image === 'number') {
+        await validateFeaturedImageWidth(data.featured_image);
       }
       const entity = await es.update('api::article.article', id, {
         data,
