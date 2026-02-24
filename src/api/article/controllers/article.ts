@@ -911,10 +911,7 @@ Sitemap: ${origin}/news-sitemap.xml
           ],
         },
         {
-          $or: [
-            { publishedAt: { $notNull: true } },
-            { published_at: { $notNull: true } },
-          ],
+          publishedAt: { $notNull: true },
         },
       ],
     };
@@ -968,10 +965,7 @@ Sitemap: ${origin}/news-sitemap.xml
           ],
         },
         {
-          $or: [
-            { publishedAt: { $notNull: true } },
-            { published_at: { $notNull: true } },
-          ],
+          publishedAt: { $notNull: true },
         },
       ],
     };
@@ -1093,10 +1087,7 @@ Sitemap: ${origin}/news-sitemap.xml
     const filters: Record<string, any> = {
       $and: [
         {
-          $or: [
-            { publishedAt: { $notNull: true } },
-            { published_at: { $notNull: true } },
-          ],
+          publishedAt: { $notNull: true },
         },
       ],
     };
