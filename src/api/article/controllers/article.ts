@@ -501,9 +501,10 @@ export default factories.createCoreController('api::article.article', ({ strapi 
 
   const validateFeaturedImageWidth = async (imageId?: number | null) => {
     if (!imageId) return;
-    const file = await es.findOne('plugin::upload.file', imageId, { fields: ['width'] });
+    const file = await es.findOne('plugin::upload.file', imageId, { fields: ['width', 'height'] });
     const width = typeof file?.width === 'number' ? file.width : undefined;
-    if (width !== undefined && width < 1200) {
+    const height = typeof file?.height === 'number' ? file.height : undefined;
+    if ((width !== undefined && width < 1200) || (height !== undefined && height < 630)) {
       throw new Error('FEATURED_IMAGE_TOO_SMALL');
     }
   };
@@ -1265,7 +1266,7 @@ Sitemap: ${origin}/news-sitemap.xml
           return;
         }
         if (error?.message === 'FEATURED_IMAGE_TOO_SMALL') {
-          ctx.badRequest('Featured image width must be at least 1200px');
+          ctx.badRequest('Featured image must be at least 1200x630px');
           return;
         }
         throw error;
