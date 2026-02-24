@@ -117,30 +117,12 @@ const deriveCanonicalUrl = (categorySlug, slug) => {
   return `${SITE_URL}${path}`;
 };
 
-const syncFlags = (data) => {
-  if (data.isFeatured !== undefined && data.is_featured === undefined) {
-    data.is_featured = Boolean(data.isFeatured);
-  }
-  if (data.is_featured !== undefined && data.isFeatured === undefined) {
-    data.isFeatured = Boolean(data.is_featured);
-  }
-  if (data.isBreaking !== undefined && data.is_breaking === undefined) {
-    data.is_breaking = Boolean(data.isBreaking);
-  }
-  if (data.is_breaking !== undefined && data.isBreaking === undefined) {
-    data.isBreaking = Boolean(data.is_breaking);
-  }
-};
-
 const fillSeoFields = (data, existing = null) => {
   const title = data.title || existing?.title || '';
   const excerpt = data.excerpt || existing?.excerpt || '';
-  if (!data.seo_title) data.seo_title = existing?.seo_title || title;
-  if (!data.meta_description) data.meta_description = existing?.meta_description || truncate(stripHtml(excerpt), 160);
-  if (!data.seoTitle) data.seoTitle = existing?.seoTitle || data.seo_title || title;
-  if (!data.seoDescription) {
-    data.seoDescription =
-      existing?.seoDescription || data.meta_description || truncate(stripHtml(excerpt), 160);
+  if (!data.seoTitle) data.seoTitle = existing?.seoTitle || title;
+  if (!data.meta_description) {
+    data.meta_description = existing?.meta_description || truncate(stripHtml(excerpt), 160);
   }
   if (!data.short_headline) data.short_headline = existing?.short_headline || truncate(title, 110);
 };
@@ -171,8 +153,6 @@ const setCanonical = async (strapi, data, existing) => {
   const canonicalUrl = slug ? deriveCanonicalUrl(categorySlug, slug) : undefined;
   if (canonicalUrl) {
     data.canonicalUrl = canonicalUrl;
-    if (!data.seo) data.seo = {};
-    if (!data.seo.canonicalURL) data.seo.canonicalURL = canonicalUrl;
   }
 };
 
@@ -182,7 +162,6 @@ const shouldPublishFromData = (data) =>
 module.exports = {
   async beforeCreate(event) {
     const { data } = event.params;
-    syncFlags(data);
 
     if (!data.slug && data.title) data.slug = toSlug(data.title);
     await ensureUniqueSlug(strapi, data.slug);
@@ -206,7 +185,6 @@ module.exports = {
 
   async beforeUpdate(event) {
     const { data, where } = event.params;
-    syncFlags(data);
 
     const existing = await strapi.entityService.findOne(ARTICLE_UID, where?.id, {
       populate: { category: true, featured_image: true },

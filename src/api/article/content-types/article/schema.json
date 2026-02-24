@@ -18,27 +18,9 @@
       ]
     },
     {
-      "name": "articles_featured_idx",
-      "columns": [
-        "is_featured"
-      ]
-    },
-    {
-      "name": "articles_breaking_idx",
-      "columns": [
-        "is_breaking"
-      ]
-    },
-    {
       "name": "articles_views_idx",
       "columns": [
         "views"
-      ]
-    },
-    {
-      "name": "articles_scheduledAt_idx",
-      "columns": [
-        "scheduled_at"
       ]
     },
     {
@@ -78,10 +60,6 @@
       "required": true,
       "maxLength": 200
     },
-    "titleHindi": {
-      "type": "string",
-      "maxLength": 200
-    },
     "slug": {
       "type": "uid",
       "targetField": "title",
@@ -92,22 +70,9 @@
       "type": "text",
       "required": true
     },
-    "excerptHindi": {
-      "type": "text"
-    },
     "content": {
       "type": "richtext",
       "required": true
-    },
-    "contentHindi": {
-      "type": "richtext"
-    },
-    "image": {
-      "type": "media",
-      "multiple": false,
-      "allowedTypes": [
-        "images"
-      ]
     },
     "featured_image": {
       "type": "media",
@@ -117,25 +82,89 @@
         "images"
       ]
     },
-    "short_headline": {
-      "type": "string",
-      "required": true,
-      "maxLength": 110
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category",
+      "inversedBy": "articles",
+      "required": true
     },
-    "seo_title": {
+    "author": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::author.author",
+      "inversedBy": "articles",
+      "required": true
+    },
+    "tags": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::tag.tag",
+      "inversedBy": "articles"
+    },
+    "isBreaking": {
+      "type": "boolean",
+      "default": false
+    },
+    "isFeatured": {
+      "type": "boolean",
+      "default": false
+    },
+    "heroPriority": {
+      "type": "integer"
+    },
+    "isEditorsPick": {
+      "type": "boolean",
+      "default": false
+    },
+    "videoType": {
+      "type": "enumeration",
+      "enum": [
+        "none",
+        "youtube",
+        "local"
+      ],
+      "default": "none"
+    },
+    "videoUrl": {
+      "type": "string"
+    },
+    "videoTitle": {
+      "type": "string"
+    },
+    "seoTitle": {
       "type": "string",
       "maxLength": 70
     },
     "meta_description": {
-      "type": "text",
+      "type": "string",
       "required": true,
       "maxLength": 160
     },
-    "focus_keyword": {
+    "canonicalUrl": {
       "type": "string"
     },
-    "location": {
-      "type": "string"
+    "newsKeywords": {
+      "type": "text"
+    },
+    "schemaJson": {
+      "type": "json"
+    },
+    "discoverEligible": {
+      "type": "boolean",
+      "default": false
+    },
+    "contentType": {
+      "type": "enumeration",
+      "enum": [
+        "news",
+        "editorial",
+        "review",
+        "interview",
+        "opinion",
+        "special-report"
+      ],
+      "default": "news"
     },
     "news_category": {
       "type": "enumeration",
@@ -151,125 +180,29 @@
       ],
       "required": true
     },
-    "discoverEligible": {
-      "type": "boolean",
-      "default": true
-    },
-    "is_featured": {
-      "type": "boolean",
-      "default": false
-    },
-    "is_breaking": {
-      "type": "boolean",
-      "default": false
-    },
-    "is_news": {
-      "type": "boolean",
-      "default": true
-    },
-    "readTime": {
+    "short_headline": {
       "type": "string",
-      "maxLength": 30
-    },
-    "videoUrl": {
-      "type": "string"
-    },
-    "isFeatured": {
-      "type": "boolean",
-      "default": false
-    },
-    "isBreaking": {
-      "type": "boolean",
-      "default": false
+      "required": true,
+      "maxLength": 110
     },
     "views": {
       "type": "integer",
       "default": 0
     },
-    "seoTitle": {
+    "readTime": {
       "type": "string",
-      "maxLength": 60
+      "maxLength": 30
     },
-    "seoDescription": {
-      "type": "text",
-      "maxLength": 160
-    },
-    "seo": {
-      "type": "component",
-      "repeatable": false,
-      "component": "seo.metadata"
-    },
-    "seoOverride": {
-      "type": "boolean",
-      "default": false
-    },
-    "canonicalUrl": {
+    "focus_keyword": {
       "type": "string"
     },
-    "newsKeywords": {
-      "type": "text"
-    },
-    "schemaJson": {
-      "type": "json"
-    },
-    "videoType": {
-      "type": "enumeration",
-      "enum": [
-        "youtube",
-        "upload",
-        "none"
-      ],
-      "default": "none"
-    },
-    "videoTitle": {
+    "location": {
       "type": "string"
-    },
-    "contentType": {
-      "type": "enumeration",
-      "enum": [
-        "news",
-        "editorial",
-        "review",
-        "interview",
-        "opinion",
-        "special-report"
-      ],
-      "default": "news"
-    },
-    "isEditorsPick": {
-      "type": "boolean",
-      "default": false
-    },
-    "heroPriority": {
-      "type": "integer"
-    },
-    "scheduledAt": {
-      "type": "datetime"
-    },
-    "tags": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::tag.tag",
-      "inversedBy": "articles"
     },
     "categories": {
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::category.category"
-    },
-    "category": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::category.category",
-      "inversedBy": "articles",
-      "required": true
-    },
-    "author": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::author.author",
-      "inversedBy": "articles",
-      "required": true
     }
   }
 }

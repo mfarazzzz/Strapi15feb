@@ -103,25 +103,15 @@ const parseDateToISO = (value: unknown): string | undefined => {
 
 const normalizeArticle = (entity: any, origin: string) => {
   if (!entity) return null;
-  const imageUrl = entity?.image?.url ? toAbsoluteUrl(origin, entity.image.url) : '';
   const featuredImageUrl = entity?.featured_image?.url
     ? toAbsoluteUrl(origin, entity.featured_image.url)
-    : imageUrl;
+    : '';
   const publishedAt = entity?.publishedAt
     ? String(entity.publishedAt)
     : entity?.published_at
       ? String(entity.published_at)
       : '';
-  const scheduledAt = entity?.scheduledAt
-    ? String(entity.scheduledAt)
-    : entity?.scheduled_at
-      ? String(entity.scheduled_at)
-      : '';
-  const status: 'draft' | 'published' | 'scheduled' = publishedAt
-    ? 'published'
-    : scheduledAt
-      ? 'scheduled'
-      : 'draft';
+  const status: 'draft' | 'published' = publishedAt ? 'published' : 'draft';
 
   const tags = Array.isArray(entity?.tags)
     ? (entity.tags as any[])
@@ -180,10 +170,9 @@ const normalizeArticle = (entity: any, origin: string) => {
     slug: entity?.slug ? String(entity.slug) : '',
     excerpt: entity?.excerpt ? String(entity.excerpt) : '',
     content: entity?.content ? String(entity.content) : '',
-    image: featuredImageUrl || imageUrl || '/placeholder.svg',
+    image: featuredImageUrl || '/placeholder.svg',
     featured_image: featuredImageUrl || undefined,
     featured_image_id: entity?.featured_image?.id ? String(entity.featured_image.id) : undefined,
-    featuredMediaId: entity?.image?.id ? String(entity.image.id) : undefined,
     category: entity?.category?.slug ? String(entity.category.slug) : '',
     categoryHindi: entity?.category?.titleHindi ? String(entity.category.titleHindi) : '',
     author: entity?.author?.name ? String(entity.author.name) : entity?.author?.nameHindi ? String(entity.author.nameHindi) : '',
@@ -196,9 +185,6 @@ const normalizeArticle = (entity: any, origin: string) => {
     readTime: entity?.readTime ? String(entity.readTime) : undefined,
     isFeatured: Boolean(entity?.isFeatured),
     isBreaking: Boolean(entity?.isBreaking),
-    is_featured: typeof entity?.is_featured === 'boolean' ? entity.is_featured : Boolean(entity?.isFeatured),
-    is_breaking: typeof entity?.is_breaking === 'boolean' ? entity.is_breaking : Boolean(entity?.isBreaking),
-    is_news: typeof entity?.is_news === 'boolean' ? entity.is_news : true,
     isEditorsPick: Boolean((entity as any)?.isEditorsPick),
     contentType: (entity as any)?.contentType ? String((entity as any).contentType) : 'news',
     authorRole:
@@ -213,19 +199,14 @@ const normalizeArticle = (entity: any, origin: string) => {
     location: entity?.location ? String(entity.location) : undefined,
     news_category: entity?.news_category ? String(entity.news_category) : undefined,
     seoTitle: entity?.seoTitle ? String(entity.seoTitle) : undefined,
-    seoDescription: entity?.seoDescription ? String(entity.seoDescription) : undefined,
-    seoOverride: typeof entity?.seoOverride === 'boolean' ? entity.seoOverride : undefined,
     discoverEligible: typeof entity?.discoverEligible === 'boolean' ? entity.discoverEligible : undefined,
     canonicalUrl: entity?.canonicalUrl ? String(entity.canonicalUrl) : undefined,
     newsKeywords: entity?.newsKeywords ? String(entity.newsKeywords) : undefined,
     schemaJson: entity?.schemaJson ?? undefined,
-    seo_title: entity?.seo_title ? String(entity.seo_title) : undefined,
     meta_description: entity?.meta_description ? String(entity.meta_description) : undefined,
-    seo: entity?.seo ?? undefined,
     videoUrl: entity?.videoUrl ? String(entity.videoUrl) : undefined,
     videoType: entity?.videoType ? String(entity.videoType) : undefined,
     videoTitle: entity?.videoTitle ? String(entity.videoTitle) : undefined,
-    scheduledAt: scheduledAt || undefined,
     structuredData,
   };
 };
@@ -261,15 +242,14 @@ const buildSeoTitle = (title: string, categoryName: string) => {
 
   const core = category ? `${baseTitle} | ${category}` : baseTitle;
   const withBrand = hasBrand ? core : `${core} | ${brand}`;
-  if (withBrand.length <= 60) return withBrand;
+  if (withBrand.length <= 70) return withBrand;
 
   const compactCore = category ? `${baseTitle} | ${category}` : baseTitle;
-  if (compactCore.length <= 60) return truncateText(compactCore, 60);
+  if (compactCore.length <= 70) return truncateText(compactCore, 70);
 
   const baseWithBrand = hasBrand ? baseTitle : `${baseTitle} | ${brand}`;
-  if (baseWithBrand.length <= 60) return baseWithBrand;
-
-  return truncateText(baseWithBrand, 60);
+  if (baseWithBrand.length <= 70) return baseWithBrand;
+  return truncateText(baseWithBrand, 70);
 };
 
 const buildSeoDescription = (excerpt: string, content: string) => {
@@ -359,13 +339,11 @@ const buildNewsArticleSchema = (input: {
 };
 
 const articlePopulate: any = {
-  image: true,
   featured_image: true,
   category: true,
   categories: true,
   author: { populate: { avatar: true } },
   tags: true,
-  seo: { populate: { ogImage: true } },
 };
 
 export default factories.createCoreController('api::article.article', ({ strapi }) => {
@@ -530,25 +508,19 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     };
 
     if (!isPartial || 'title' in input) set('title', parseString(input.title) ?? input.title ?? undefined);
-    if (!isPartial || 'titleHindi' in input) set('titleHindi', parseString(input.titleHindi) ?? input.titleHindi ?? undefined);
     if (!isPartial || 'slug' in input) set('slug', parseString(input.slug) ?? input.slug ?? undefined);
     if (!isPartial || 'excerpt' in input) set('excerpt', parseString(input.excerpt) ?? input.excerpt ?? undefined);
-    if (!isPartial || 'excerptHindi' in input) set('excerptHindi', parseString(input.excerptHindi) ?? input.excerptHindi ?? undefined);
     if (!isPartial || 'content' in input) set('content', parseString(input.content) ?? input.content ?? undefined);
-    if (!isPartial || 'contentHindi' in input) set('contentHindi', parseString(input.contentHindi) ?? input.contentHindi ?? undefined);
     if (!isPartial || 'short_headline' in input) set('short_headline', parseString(input.short_headline) ?? input.short_headline ?? undefined);
     if (!isPartial || 'readTime' in input) set('readTime', parseString(input.readTime) ?? input.readTime ?? undefined);
     if (!isPartial || 'videoUrl' in input) set('videoUrl', parseString(input.videoUrl) ?? input.videoUrl ?? undefined);
     if (!isPartial || 'videoType' in input) set('videoType', parseString(input.videoType) ?? input.videoType ?? undefined);
     if (!isPartial || 'videoTitle' in input) set('videoTitle', parseString(input.videoTitle) ?? input.videoTitle ?? undefined);
-    if (!isPartial || 'seo_title' in input) set('seo_title', parseString(input.seo_title) ?? input.seo_title ?? undefined);
     if (!isPartial || 'meta_description' in input) set('meta_description', parseString(input.meta_description) ?? input.meta_description ?? undefined);
     if (!isPartial || 'focus_keyword' in input) set('focus_keyword', parseString(input.focus_keyword) ?? input.focus_keyword ?? undefined);
     if (!isPartial || 'location' in input) set('location', parseString(input.location) ?? input.location ?? undefined);
     if (!isPartial || 'news_category' in input) set('news_category', parseString(input.news_category) ?? input.news_category ?? undefined);
     if (!isPartial || 'seoTitle' in input) set('seoTitle', parseString(input.seoTitle) ?? input.seoTitle ?? undefined);
-    if (!isPartial || 'seoDescription' in input) set('seoDescription', parseString(input.seoDescription) ?? input.seoDescription ?? undefined);
-    if (!isPartial || 'seoOverride' in input) set('seoOverride', parseBoolean(input.seoOverride) ?? false);
     if (!isPartial || 'canonicalUrl' in input) set('canonicalUrl', parseString(input.canonicalUrl) ?? input.canonicalUrl ?? undefined);
     if (!isPartial || 'newsKeywords' in input) set('newsKeywords', parseString(input.newsKeywords) ?? input.newsKeywords ?? undefined);
     if (!isPartial || 'schemaJson' in input) {
@@ -557,23 +529,12 @@ export default factories.createCoreController('api::article.article', ({ strapi 
         set('schemaJson', schemaCandidate);
       }
     }
-    if (!isPartial || 'seo' in input) {
-      const seoCandidate = input.seo;
-      if (seoCandidate && typeof seoCandidate === 'object') {
-        set('seo', seoCandidate);
-      }
-    }
 
     if (!isPartial || 'isFeatured' in input) set('isFeatured', parseBoolean(input.isFeatured));
     if (!isPartial || 'isBreaking' in input) set('isBreaking', parseBoolean(input.isBreaking));
-    if (!isPartial || 'is_featured' in input) set('is_featured', parseBoolean(input.is_featured));
-    if (!isPartial || 'is_breaking' in input) set('is_breaking', parseBoolean(input.is_breaking));
-    if (!isPartial || 'is_news' in input) set('is_news', parseBoolean(input.is_news) ?? true);
     if (!isPartial || 'isEditorsPick' in input) set('isEditorsPick', parseBoolean(input.isEditorsPick));
     if (!isPartial || 'contentType' in input) set('contentType', parseString(input.contentType) ?? input.contentType ?? undefined);
     if (!isPartial || 'views' in input) set('views', parseNumber(input.views));
-
-    if (!isPartial || 'scheduledAt' in input) set('scheduledAt', parseDateToISO(input.scheduledAt));
 
     if (!isPartial || 'category' in input) {
       let categoryInput: unknown = input.category;
@@ -671,132 +632,13 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       }
     }
 
-    if (!isPartial || 'featuredMediaId' in input || 'image' in input) {
-      const featuredMediaIdRaw = input.featuredMediaId;
-      const featuredMediaId = parseRelationId(featuredMediaIdRaw);
-      const imageUrl = parseString(input.image);
-
-      if (featuredMediaId) {
-        set('image', featuredMediaId);
-      } else if (featuredMediaIdRaw === null || (featuredMediaIdRaw === '' && !imageUrl)) {
-        set('image', null);
-      } else if (imageUrl) {
-        const fileId = await resolveUploadFileIdByUrl(imageUrl, origin);
-        if (fileId) set('image', fileId);
-      }
-    }
-
-    const status = parseString(input.status);
-    const publishedDate = parseDateToISO(input.publishedDate);
-    if (status === 'published') {
-      set('publishedAt', new Date().toISOString());
-      set('scheduledAt', null);
-    } else if (status === 'draft') {
-      set('publishedAt', null);
-      set('scheduledAt', null);
-    } else if (status === 'scheduled') {
-      set('publishedAt', null);
-      if (!data.scheduledAt) {
-        const next = parseDateToISO(input.scheduledAt) ?? publishedDate;
-        if (next) set('scheduledAt', next);
-      }
-    }
-
     if (!isPartial) {
       const slugCandidate = parseString(input.slug);
       if (!slugCandidate) {
-        const titleCandidate = parseString(input.title) ?? parseString(input.titleHindi) ?? '';
+        const titleCandidate = parseString(input.title) ?? '';
         data.slug = await ensureUniqueSlug(titleCandidate);
       } else {
         data.slug = await ensureUniqueSlug(slugCandidate);
-      }
-    }
-
-    const seoOverride = parseBoolean(input.seoOverride) ?? false;
-    const wantsSeo = !isPartial || 'seoTitle' in input || 'seoDescription' in input || 'seoOverride' in input || 'canonicalUrl' in input || 'newsKeywords' in input || 'schemaJson' in input || 'title' in input || 'excerpt' in input || 'content' in input || 'category' in input || 'slug' in input || 'tags' in input || 'image' in input || 'featuredMediaId' in input || 'author' in input || 'publishedDate' in input || 'status' in input;
-    if (wantsSeo) {
-      const title = parseString(input.title) ?? (typeof data.title === 'string' ? data.title : '');
-      const excerpt = parseString(input.excerpt) ?? (typeof data.excerpt === 'string' ? data.excerpt : '');
-      const content = parseString(input.content) ?? (typeof data.content === 'string' ? data.content : '');
-
-      const categorySlugFromInput = parseString(input.category) || '';
-      const categoryId = typeof data.category === 'number' ? data.category : parseRelationId(input.category);
-      let categoryEntity: any = null;
-      if (categoryId) {
-        try {
-          categoryEntity = await es.findOne('api::category.category', categoryId, {});
-        } catch {
-          categoryEntity = null;
-        }
-      }
-      const categorySlug = categorySlugFromInput || (categoryEntity?.slug ? String(categoryEntity.slug) : '');
-      const categoryName =
-        (categoryEntity?.titleEnglish ? String(categoryEntity.titleEnglish) : '') ||
-        (categoryEntity?.titleHindi ? String(categoryEntity.titleHindi) : '') ||
-        categorySlug;
-
-      const slug = parseString(input.slug) || (typeof data.slug === 'string' ? data.slug : '');
-      const canonicalUrl = buildCanonicalUrl(categorySlug, slug);
-
-      const manualSeoTitle = parseString(input.seoTitle);
-      const manualSeoDescription = parseString(input.seoDescription);
-      const manualCanonicalUrl = parseString(input.canonicalUrl);
-      const manualNewsKeywords = parseString(input.newsKeywords);
-      const manualSchemaJson = input.schemaJson && (typeof input.schemaJson === 'object' || Array.isArray(input.schemaJson)) ? input.schemaJson : undefined;
-
-      const imageCandidate = parseString(input.image) || '';
-      const featuredImageUrl = imageCandidate ? toAbsoluteUrl(origin, imageCandidate) : '';
-
-      const publishedDate = parseDateToISO(input.publishedDate) || '';
-      const modifiedAt = typeof data.updatedAt === 'string' ? data.updatedAt : '';
-
-      const authorRaw = parseString(input.author) || '';
-      const authorId = parseRelationId(input.author);
-      let authorEntity: any = null;
-      if (authorId) {
-        try {
-          authorEntity = await es.findOne('api::author.author', authorId, {});
-        } catch {
-          authorEntity = null;
-        }
-      }
-      const authorName = authorEntity?.nameHindi ? String(authorEntity.nameHindi) : authorEntity?.name ? String(authorEntity.name) : authorRaw;
-
-      const tagsInput = Array.isArray(input.tags) ? (input.tags as any[]).map((t) => String(t || '').trim()).filter(Boolean) : undefined;
-      const newsKeywords = buildNewsKeywords(categoryName, tagsInput);
-
-      const autoSeoTitle = buildSeoTitle(title, categoryName);
-      const autoSeoDescription = buildSeoDescription(excerpt, content);
-
-      const schemaAuto =
-        canonicalUrl && title
-          ? buildNewsArticleSchema({
-              canonicalUrl,
-              title: autoSeoTitle,
-              description: autoSeoDescription,
-              imageUrl: featuredImageUrl,
-              publishedAt: publishedDate,
-              modifiedAt,
-              authorName,
-              section: categoryName,
-              keywords: newsKeywords,
-            })
-          : undefined;
-
-      if (!seoOverride) {
-        set('seoOverride', false);
-        set('seoTitle', autoSeoTitle);
-        set('seoDescription', autoSeoDescription);
-        if (canonicalUrl) set('canonicalUrl', canonicalUrl);
-        if (newsKeywords) set('newsKeywords', newsKeywords);
-        if (schemaAuto) set('schemaJson', schemaAuto);
-      } else {
-        set('seoOverride', true);
-        set('seoTitle', manualSeoTitle || autoSeoTitle);
-        set('seoDescription', manualSeoDescription || autoSeoDescription);
-        if (manualCanonicalUrl || canonicalUrl) set('canonicalUrl', manualCanonicalUrl || canonicalUrl);
-        if (manualNewsKeywords || newsKeywords) set('newsKeywords', manualNewsKeywords || newsKeywords);
-        if (manualSchemaJson || schemaAuto) set('schemaJson', manualSchemaJson || schemaAuto);
       }
     }
 
@@ -889,12 +731,11 @@ export default factories.createCoreController('api::article.article', ({ strapi 
 
       const entities = await es.findMany('api::article.article', {
         filters: {
-          is_news: true,
           publishedAt: { $gte: since },
         },
         sort: { publishedAt: 'desc' },
         limit: 1000,
-        populate: { featured_image: true, image: true, category: true },
+        populate: { featured_image: true, category: true },
         publicationState: 'live',
       });
 
@@ -1071,11 +912,8 @@ Sitemap: ${origin}/news-sitemap.xml
     const filters: Record<string, any> = {
       $or: [
         { title: { $containsi: q } },
-        { titleHindi: { $containsi: q } },
         { excerpt: { $containsi: q } },
-        { excerptHindi: { $containsi: q } },
         { content: { $containsi: q } },
-        { contentHindi: { $containsi: q } },
       ],
     };
     requirePublishedFilter(filters);
@@ -1141,11 +979,8 @@ Sitemap: ${origin}/news-sitemap.xml
     if (search) {
       filters.$or = [
         { title: { $containsi: search } },
-        { titleHindi: { $containsi: search } },
         { excerpt: { $containsi: search } },
-        { excerptHindi: { $containsi: search } },
         { content: { $containsi: search } },
-        { contentHindi: { $containsi: search } },
       ];
     }
 
@@ -1153,9 +988,6 @@ Sitemap: ${origin}/news-sitemap.xml
       filters.publishedAt = { $notNull: true };
     } else if (status === 'draft') {
       filters.publishedAt = { $null: true };
-    } else if (status === 'scheduled') {
-      filters.publishedAt = { $null: true };
-      filters.scheduledAt = { $notNull: true };
     }
 
     const sortKeyWhitelist = new Set(['publishedAt', 'publishedDate', 'views', 'title', 'createdAt', 'updatedAt']);
@@ -1222,11 +1054,8 @@ Sitemap: ${origin}/news-sitemap.xml
     if (search) {
       filters.$or = [
         { title: { $containsi: search } },
-        { titleHindi: { $containsi: search } },
         { excerpt: { $containsi: search } },
-        { excerptHindi: { $containsi: search } },
         { content: { $containsi: search } },
-        { contentHindi: { $containsi: search } },
       ];
     }
 
