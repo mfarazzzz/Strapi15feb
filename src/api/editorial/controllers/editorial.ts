@@ -141,7 +141,7 @@ const editorialPopulate: any = {
   // Fetch related articles with their image, category, and author.
   // NOTE: Only `populate` (nested) is supported here — no sort, pagination, or filters.
   // Published-only filtering and sorting are done in-memory in normalizeEditorial().
-  articles: { populate: { image: true, category: true, author: true } },
+  articles: { populate: { featured_image: true, category: true, author: true } },
 };
 
 /** Maximum number of related articles to include in a normalized editorial response */
@@ -281,11 +281,9 @@ const normalizeEditorial = (entity: any, origin: string) => {
         .map((a: any) => ({
           id: String(a.id),
           title: a?.title ? String(a.title) : '',
-          titleHindi: a?.titleHindi ? String(a.titleHindi) : undefined,
           slug: a?.slug ? String(a.slug) : '',
-          image: a?.image?.url ? toAbsoluteUrl(origin, a.image.url) : '/placeholder.svg',
+          image: a?.featured_image?.url ? toAbsoluteUrl(origin, a.featured_image.url) : '/placeholder.svg',
           category: a?.category?.slug ? String(a.category.slug) : '',
-          categoryHindi: a?.category?.titleHindi ? String(a.category.titleHindi) : '',
           publishedDate: a?.publishedAt ? String(a.publishedAt) : '',
         }))
     : [];

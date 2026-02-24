@@ -7,12 +7,12 @@ const SITE_URL =
     : 'https://rampurnews.com';
 const EDITORIAL_CATEGORY_SLUG = 'editorials';
 const EDITORIAL_CONTENT_TYPES = ['editorial', 'review', 'interview', 'opinion', 'special-report'] as const;
-const DEFAULT_SORT_FIELD = 'createdAt';
+const DEFAULT_SORT_FIELD = 'publishedAt';
 
 const resolveSortField = (orderBy: string | undefined) => {
   const sortKeyWhitelist = new Set(['publishedAt', 'publishedDate', 'createdAt', 'views', 'title']);
   const sortFieldRaw = orderBy && sortKeyWhitelist.has(orderBy) ? orderBy : DEFAULT_SORT_FIELD;
-  if (sortFieldRaw === 'publishedAt' || sortFieldRaw === 'publishedDate') return DEFAULT_SORT_FIELD;
+  if (sortFieldRaw === 'publishedDate') return 'publishedAt';
   return sortFieldRaw;
 };
 
@@ -103,14 +103,11 @@ const parseDateToISO = (value: unknown): string | undefined => {
 
 const normalizeArticle = (entity: any, origin: string) => {
   if (!entity) return null;
-  const featuredImageUrl = entity?.featured_image?.url
-    ? toAbsoluteUrl(origin, entity.featured_image.url)
-    : '';
-  const publishedAt = entity?.publishedAt
-    ? String(entity.publishedAt)
-    : entity?.published_at
-      ? String(entity.published_at)
+  const featuredImageUrl =
+    entity?.featured_image?.url || entity?.image?.url
+      ? toAbsoluteUrl(origin, entity?.featured_image?.url || entity?.image?.url)
       : '';
+  const publishedAt = entity?.publishedAt || entity?.published_at || entity?.createdAt || '';
   const status: 'draft' | 'published' = publishedAt ? 'published' : 'draft';
 
   const tags = Array.isArray(entity?.tags)
@@ -228,8 +225,11 @@ const truncateText = (value: string, maxLength: number) => {
 };
 
 const requirePublishedFilter = (filters: Record<string, any>) => {
+  // In Strapi v5, using publicationState: 'live' in entityService is the preferred way.
+  // We don't necessarily need to manually add the publishedAt filter if 'live' is set,
+  // but if we do, we should ensure it's the correct syntax.
   if (filters.publishedAt) return;
-  filters.publishedAt = { $notNull: true };
+  // filters.publishedAt = { $notNull: true }; // Removing this to let publicationState: 'live' handle it
 };
 
 const buildSeoTitle = (title: string, categoryName: string) => {
@@ -511,12 +511,21 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     if (!isPartial || 'slug' in input) set('slug', parseString(input.slug) ?? input.slug ?? undefined);
     if (!isPartial || 'excerpt' in input) set('excerpt', parseString(input.excerpt) ?? input.excerpt ?? undefined);
     if (!isPartial || 'content' in input) set('content', parseString(input.content) ?? input.content ?? undefined);
-    if (!isPartial || 'short_headline' in input) set('short_headline', parseString(input.short_headline) ?? input.short_headline ?? undefined);
+    if (!isPartial || 'short_headline' in input) {
+      const explicit = parseString(input.short_headline) ?? input.short_headline ?? undefined;
+      const title = parseString(input.title) ?? (typeof data.title === 'string' ? data.title : '');
+      set('short_headline', explicit || truncateText(title, 110) || undefined);
+    }
     if (!isPartial || 'readTime' in input) set('readTime', parseString(input.readTime) ?? input.readTime ?? undefined);
     if (!isPartial || 'videoUrl' in input) set('videoUrl', parseString(input.videoUrl) ?? input.videoUrl ?? undefined);
     if (!isPartial || 'videoType' in input) set('videoType', parseString(input.videoType) ?? input.videoType ?? undefined);
     if (!isPartial || 'videoTitle' in input) set('videoTitle', parseString(input.videoTitle) ?? input.videoTitle ?? undefined);
-    if (!isPartial || 'meta_description' in input) set('meta_description', parseString(input.meta_description) ?? input.meta_description ?? undefined);
+    if (!isPartial || 'meta_description' in input || 'seoDescription' in input) {
+      const explicit = parseString(input.meta_description) ?? input.meta_description ?? undefined;
+      const fromSeoDescription = parseString(input.seoDescription) ?? input.seoDescription ?? undefined;
+      const fallback = buildSeoDescription(parseString(input.excerpt) ?? '', parseString(input.content) ?? '');
+      set('meta_description', explicit || fromSeoDescription || fallback || undefined);
+    }
     if (!isPartial || 'focus_keyword' in input) set('focus_keyword', parseString(input.focus_keyword) ?? input.focus_keyword ?? undefined);
     if (!isPartial || 'location' in input) set('location', parseString(input.location) ?? input.location ?? undefined);
     if (!isPartial || 'news_category' in input) set('news_category', parseString(input.news_category) ?? input.news_category ?? undefined);
@@ -617,8 +626,15 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       }
     }
 
-    if (!isPartial || 'featured_image' in input || 'featuredImageId' in input || 'featuredImage' in input) {
-      const featuredImageRaw = input.featuredImageId ?? input.featuredImage ?? input.featured_image;
+    if (
+      !isPartial ||
+      'featured_image' in input ||
+      'featuredImageId' in input ||
+      'featuredImage' in input ||
+      'featuredMediaId' in input
+    ) {
+      const featuredImageRaw =
+        input.featuredImageId ?? input.featuredMediaId ?? input.featuredImage ?? input.featured_image;
       const featuredImageId = parseRelationId(featuredImageRaw);
       const featuredImageUrl = typeof featuredImageRaw === 'string' ? parseString(featuredImageRaw) : undefined;
 
@@ -650,10 +666,15 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const limit = parseLimit(ctx.query.limit, 10);
     const origin = ctx.request.origin || '';
     const entities = await es.findMany('api::article.article', {
-      filters: { isFeatured: true, publishedAt: { $notNull: true } },
+      filters: { 
+        isFeatured: true,
+        $or: [
+          { publishedAt: { $notNull: true } },
+          { published_at: { $notNull: true } }
+        ]
+      },
       sort: { [DEFAULT_SORT_FIELD]: 'desc' },
       populate: articlePopulate,
-      publicationState: 'live',
       limit,
     });
     return (entities as any[]).map((e) => normalizeArticle(e, origin));
@@ -663,10 +684,15 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const limit = parseLimit(ctx.query.limit, 10);
     const origin = ctx.request.origin || '';
     const entities = await es.findMany('api::article.article', {
-      filters: { isBreaking: true, publishedAt: { $notNull: true } },
+      filters: { 
+        isBreaking: true,
+        $or: [
+          { publishedAt: { $notNull: true } },
+          { published_at: { $notNull: true } }
+        ]
+      },
       sort: { [DEFAULT_SORT_FIELD]: 'desc' },
       populate: articlePopulate,
-      publicationState: 'live',
       limit,
     });
     return (entities as any[]).map((e) => normalizeArticle(e, origin));
@@ -684,21 +710,25 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       es.findMany('api::article.article', {
         filters: {
           isFeatured: true,
-          publishedAt: { $notNull: true },
+          $or: [
+            { publishedAt: { $notNull: true } },
+            { published_at: { $notNull: true } }
+          ]
         },
         sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
-        publicationState: 'live',
         limit: featuredLimit,
       }),
       es.findMany('api::article.article', {
         filters: {
           isBreaking: true,
-          publishedAt: { $notNull: true },
+          $or: [
+            { publishedAt: { $notNull: true } },
+            { published_at: { $notNull: true } }
+          ]
         },
         sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
-        publicationState: 'live',
         limit: limit * 2,
       }),
     ]);
@@ -713,10 +743,14 @@ export default factories.createCoreController('api::article.article', ({ strapi 
 
     if (combined.length === 0) {
       combined = await es.findMany('api::article.article', {
-        filters: { publishedAt: { $notNull: true } },
+        filters: { 
+          $or: [
+            { publishedAt: { $notNull: true } },
+            { published_at: { $notNull: true } }
+          ]
+        },
         sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
-        publicationState: 'live',
         limit,
       });
     }
@@ -778,7 +812,7 @@ ${urls.join('')}
 
       const [articles, categories, authors] = await Promise.all([
         es.findMany('api::article.article', {
-          filters: { publishedAt: { $notNull: true } },
+          filters: { },
           sort: { publishedAt: 'desc' },
           limit: 5000,
           populate: { category: true },
@@ -845,10 +879,14 @@ Sitemap: ${origin}/news-sitemap.xml
     const limit = parseLimit(ctx.query.limit, 10);
     const origin = ctx.request.origin || '';
     const entities = await es.findMany('api::article.article', {
-      filters: { publishedAt: { $notNull: true } },
+      filters: { 
+        $or: [
+          { publishedAt: { $notNull: true } },
+          { published_at: { $notNull: true } }
+        ]
+      },
       sort: { views: 'desc' },
       populate: articlePopulate,
-      publicationState: 'live',
       limit,
     });
     return (entities as any[]).map((e) => normalizeArticle(e, origin));
@@ -865,20 +903,31 @@ Sitemap: ${origin}/news-sitemap.xml
     const origin = ctx.request.origin || '';
 
     const filters = {
-      $or: [{ category: { slug: categorySlug } }, { categories: { slug: categorySlug } }],
+      $and: [
+        {
+          $or: [
+            { category: { slug: categorySlug } },
+            { categories: { slug: categorySlug } },
+          ],
+        },
+        {
+          $or: [
+            { publishedAt: { $notNull: true } },
+            { published_at: { $notNull: true } },
+          ],
+        },
+      ],
     };
-    requirePublishedFilter(filters);
 
     const [entities, total] = await Promise.all([
       es.findMany('api::article.article', {
         filters,
         sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
-        publicationState: 'live',
         start: offset,
         limit,
       }),
-      es.count('api::article.article', { filters, publicationState: 'live' }),
+      es.count('api::article.article', { filters }),
     ]);
 
     const pageSize = limit;
@@ -910,24 +959,32 @@ Sitemap: ${origin}/news-sitemap.xml
     const origin = ctx.request.origin || '';
 
     const filters: Record<string, any> = {
-      $or: [
-        { title: { $containsi: q } },
-        { excerpt: { $containsi: q } },
-        { content: { $containsi: q } },
+      $and: [
+        {
+          $or: [
+            { title: { $containsi: q } },
+            { excerpt: { $containsi: q } },
+            { content: { $containsi: q } },
+          ],
+        },
+        {
+          $or: [
+            { publishedAt: { $notNull: true } },
+            { published_at: { $notNull: true } },
+          ],
+        },
       ],
     };
-    requirePublishedFilter(filters);
 
     const [entities, total] = await Promise.all([
       es.findMany('api::article.article', {
         filters,
         sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
-        publicationState: 'live',
         start: offset,
         limit,
       }),
-      es.count('api::article.article', { filters, publicationState: 'live' }),
+      es.count('api::article.article', { filters }),
     ]);
 
     const pageSize = limit;
@@ -1033,10 +1090,18 @@ Sitemap: ${origin}/news-sitemap.xml
     const order = (parseString(ctx.query.order) ?? 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
     const origin = getPublicOrigin(ctx);
 
-    const filters: Record<string, any> = {};
-    requirePublishedFilter(filters);
+    const filters: Record<string, any> = {
+      $and: [
+        {
+          $or: [
+            { publishedAt: { $notNull: true } },
+            { published_at: { $notNull: true } },
+          ],
+        },
+      ],
+    };
+
     if (category || parent) {
-      filters.$and = filters.$and || [];
       const or: any[] = [];
       if (category) {
         or.push({ category: { slug: category } }, { categories: { slug: category } });
@@ -1049,14 +1114,18 @@ Sitemap: ${origin}/news-sitemap.xml
     if (featured !== undefined) filters.isFeatured = featured;
     if (breaking !== undefined) filters.isBreaking = breaking;
     if (author) {
-      filters.author = author.includes('@') ? { email: author } : { $or: [{ name: author }, { nameHindi: author }] };
+      filters.$and.push({
+        author: author.includes('@') ? { email: author } : { $or: [{ name: author }, { nameHindi: author }] },
+      });
     }
     if (search) {
-      filters.$or = [
-        { title: { $containsi: search } },
-        { excerpt: { $containsi: search } },
-        { content: { $containsi: search } },
-      ];
+      filters.$and.push({
+        $or: [
+          { title: { $containsi: search } },
+          { excerpt: { $containsi: search } },
+          { content: { $containsi: search } },
+        ],
+      });
     }
 
     const sort = { [resolveSortField(orderBy)]: order };
@@ -1065,11 +1134,10 @@ Sitemap: ${origin}/news-sitemap.xml
         filters,
         sort,
         populate: articlePopulate,
-        publicationState: 'live',
         start: offset,
         limit,
       }),
-      es.count('api::article.article', { filters, publicationState: 'live' }),
+      es.count('api::article.article', { filters }),
     ]);
 
     const pageSize = limit;
@@ -1110,10 +1178,6 @@ Sitemap: ${origin}/news-sitemap.xml
       ctx.notFound('Article not found');
       return;
     }
-    if (!(entity as any)?.publishedAt) {
-      ctx.notFound('Article not found');
-      return;
-    }
     return normalizeArticle(entity, origin);
   },
 
@@ -1138,7 +1202,7 @@ Sitemap: ${origin}/news-sitemap.xml
     const slug = ctx.params.slug;
     const origin = getPublicOrigin(ctx);
     const entities = await es.findMany('api::article.article', {
-      filters: { slug, publishedAt: { $notNull: true } },
+      filters: { slug },
       populate: articlePopulate,
       publicationState: 'live',
       limit: 1,
@@ -1185,6 +1249,52 @@ Sitemap: ${origin}/news-sitemap.xml
     const entity = await es.update('api::article.article', id, {
       data,
       populate: articlePopulate,
+    });
+    return normalizeArticle(entity, origin);
+  },
+
+  async publish(ctx) {
+    const id = String(ctx.params.id || '').trim();
+    if (!id) {
+      ctx.badRequest('Invalid id');
+      return;
+    }
+
+    const origin = getPublicOrigin(ctx);
+    const documentId = Number.isFinite(Number(id)) ? Number(id) : id;
+    const docsFactory = (strapi as any).documents;
+    const docs = typeof docsFactory === 'function' ? docsFactory.call(strapi, 'api::article.article') : null;
+    if (docs && typeof docs.publish === 'function') {
+      await docs.publish({ documentId });
+    } else {
+      await es.update('api::article.article', id, { data: { publishedAt: new Date().toISOString() } });
+    }
+    const entity = await es.findOne('api::article.article', id, {
+      populate: articlePopulate,
+      publicationState: 'preview',
+    });
+    return normalizeArticle(entity, origin);
+  },
+
+  async unpublish(ctx) {
+    const id = String(ctx.params.id || '').trim();
+    if (!id) {
+      ctx.badRequest('Invalid id');
+      return;
+    }
+
+    const origin = getPublicOrigin(ctx);
+    const documentId = Number.isFinite(Number(id)) ? Number(id) : id;
+    const docsFactory = (strapi as any).documents;
+    const docs = typeof docsFactory === 'function' ? docsFactory.call(strapi, 'api::article.article') : null;
+    if (docs && typeof docs.unpublish === 'function') {
+      await docs.unpublish({ documentId });
+    } else {
+      await es.update('api::article.article', id, { data: { publishedAt: null } });
+    }
+    const entity = await es.findOne('api::article.article', id, {
+      populate: articlePopulate,
+      publicationState: 'preview',
     });
     return normalizeArticle(entity, origin);
   },

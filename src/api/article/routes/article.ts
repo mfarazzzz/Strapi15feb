@@ -103,6 +103,18 @@ export default {
       config: { auth: {}, policies: ['global::cms-role'] },
     },
     {
+      method: 'POST',
+      path: '/articles/:id/publish',
+      handler: 'article.publish',
+      config: { auth: {}, policies: ['global::cms-role'] },
+    },
+    {
+      method: 'POST',
+      path: '/articles/:id/unpublish',
+      handler: 'article.unpublish',
+      config: { auth: {}, policies: ['global::cms-role'] },
+    },
+    {
       method: 'DELETE',
       path: '/articles/:id',
       handler: 'article.delete',
