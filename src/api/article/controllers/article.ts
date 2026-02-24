@@ -1036,12 +1036,10 @@ Sitemap: ${origin}/news-sitemap.xml
       const offset = parseNumber(ctx.query.offset) ?? 0;
       const origin = getPublicOrigin(ctx);
 
-      // 1. Initialize filters from standard Strapi v5 syntax
       const filters: Record<string, any> = ctx.query.filters 
         ? JSON.parse(JSON.stringify(ctx.query.filters)) 
         : {};
 
-      // 2. Merge legacy parameters if present
       const category = parseString(ctx.query.category);
       const parent = parseString(ctx.query.parent);
       const featured = parseBoolean(ctx.query.featured);
@@ -1079,12 +1077,29 @@ Sitemap: ${origin}/news-sitemap.xml
         });
       }
 
-      // 3. Handle Sorting
-      // Priority:
-      // 1. Explicit sort param from query (v5 standard)
-      // 2. Legacy orderBy/order params
-      // 3. Default: publishedAt:desc
       let sort: any = ctx.query.sort;
+
+      if (typeof sort === 'string') {
+        const [field, order] = sort.split(':');
+        if (field && order) {
+          const resolvedField = resolveSortField(field);
+          sort = { [resolvedField]: order };
+        }
+      } else if (Array.isArray(sort)) {
+        const normalized = sort
+          .filter((entry) => typeof entry === 'string')
+          .map((entry) => {
+            const [field, order] = String(entry).split(':');
+            const resolvedField = resolveSortField(field);
+            return order ? `${resolvedField}:${order}` : resolvedField;
+          });
+        sort = normalized.length > 0 ? normalized : undefined;
+      } else if (sort && typeof sort === 'object') {
+        if (sort.publishedDate) {
+          sort = { ...sort, publishedAt: sort.publishedDate };
+          delete sort.publishedDate;
+        }
+      }
 
       if (!sort) {
           const orderBy = parseString(ctx.query.orderBy);
@@ -1108,6 +1123,7 @@ Sitemap: ${origin}/news-sitemap.xml
         }),
         es.count('api::article.article', { filters, publicationState: 'live' }),
       ]);
+
 
       const pageSize = limit;
       const page = pageSize > 0 ? Math.floor(offset / pageSize) + 1 : 1;
