@@ -890,7 +890,7 @@ Sitemap: ${origin}/news-sitemap.xml
       const [entities, total] = await Promise.all([
         es.findMany('api::article.article', {
           filters,
-          sort: { [DEFAULT_SORT_FIELD]: 'desc' },
+          sort: [{ [DEFAULT_SORT_FIELD]: 'desc' }],
           populate: articlePopulate,
           start: offset,
           limit,
