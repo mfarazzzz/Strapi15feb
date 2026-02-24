@@ -672,9 +672,12 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     async breaking(ctx) {
       const limit = parseLimit(ctx.query.limit, 10);
       const origin = ctx.request.origin || '';
+      const now = Date.now();
+      const cutoff = new Date(now - 48 * 60 * 60 * 1000).toISOString();
       const entities = await es.findMany('api::article.article', {
         filters: { 
           isBreaking: true,
+          publishedAt: { $gte: cutoff },
         },
         sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
