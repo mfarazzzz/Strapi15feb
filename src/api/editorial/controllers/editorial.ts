@@ -242,14 +242,10 @@ const normalizeEditorial = (entity: any, origin: string) => {
   const imageUrl = entity?.image?.url ? toAbsoluteUrl(origin, entity.image.url) : '';
   const publishedAt = entity?.publishedAt
     ? String(entity.publishedAt)
-    : entity?.published_at
-      ? String(entity.published_at)
-      : '';
+    : '';
   const scheduledAt = entity?.scheduledAt
     ? String(entity.scheduledAt)
-    : entity?.scheduled_at
-      ? String(entity.scheduled_at)
-      : '';
+    : '';
   const status: 'draft' | 'published' | 'scheduled' = publishedAt
     ? 'published'
     : scheduledAt

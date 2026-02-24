@@ -10,7 +10,7 @@ const EDITORIAL_CONTENT_TYPES = ['editorial', 'review', 'interview', 'opinion', 
 const DEFAULT_SORT_FIELD = 'publishedAt';
 
 const resolveSortField = (orderBy: string | undefined) => {
-  const sortKeyWhitelist = new Set(['publishedAt', 'publishedDate', 'createdAt', 'views', 'title']);
+  const sortKeyWhitelist = new Set(['publishedAt', 'createdAt', 'views', 'title']);
   const sortFieldRaw = orderBy && sortKeyWhitelist.has(orderBy) ? orderBy : DEFAULT_SORT_FIELD;
   if (sortFieldRaw === 'publishedDate') return 'publishedAt';
   return sortFieldRaw;
@@ -107,7 +107,7 @@ const normalizeArticle = (entity: any, origin: string) => {
     entity?.featured_image?.url || entity?.image?.url
       ? toAbsoluteUrl(origin, entity?.featured_image?.url || entity?.image?.url)
       : '';
-  const publishedAt = entity?.publishedAt || entity?.published_at || entity?.createdAt || '';
+  const publishedAt = entity?.publishedAt || entity?.createdAt || '';
   const status: 'draft' | 'published' = publishedAt ? 'published' : 'draft';
 
   const tags = Array.isArray(entity?.tags)
@@ -668,10 +668,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const entities = await es.findMany('api::article.article', {
       filters: { 
         isFeatured: true,
-        $or: [
-          { publishedAt: { $notNull: true } },
-          { published_at: { $notNull: true } }
-        ]
+        publishedAt: { $notNull: true }
       },
       sort: { [DEFAULT_SORT_FIELD]: 'desc' },
       populate: articlePopulate,
@@ -686,10 +683,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     const entities = await es.findMany('api::article.article', {
       filters: { 
         isBreaking: true,
-        $or: [
-          { publishedAt: { $notNull: true } },
-          { published_at: { $notNull: true } }
-        ]
+        publishedAt: { $notNull: true }
       },
       sort: { [DEFAULT_SORT_FIELD]: 'desc' },
       populate: articlePopulate,
@@ -710,10 +704,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       es.findMany('api::article.article', {
         filters: {
           isFeatured: true,
-          $or: [
-            { publishedAt: { $notNull: true } },
-            { published_at: { $notNull: true } }
-          ]
+          publishedAt: { $notNull: true }
         },
         sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
@@ -722,10 +713,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       es.findMany('api::article.article', {
         filters: {
           isBreaking: true,
-          $or: [
-            { publishedAt: { $notNull: true } },
-            { published_at: { $notNull: true } }
-          ]
+          publishedAt: { $notNull: true }
         },
         sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
@@ -744,10 +732,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     if (combined.length === 0) {
       combined = await es.findMany('api::article.article', {
         filters: { 
-          $or: [
-            { publishedAt: { $notNull: true } },
-            { published_at: { $notNull: true } }
-          ]
+          publishedAt: { $notNull: true }
         },
         sort: { [DEFAULT_SORT_FIELD]: 'desc' },
         populate: articlePopulate,
@@ -880,10 +865,7 @@ Sitemap: ${origin}/news-sitemap.xml
     const origin = ctx.request.origin || '';
     const entities = await es.findMany('api::article.article', {
       filters: { 
-        $or: [
-          { publishedAt: { $notNull: true } },
-          { published_at: { $notNull: true } }
-        ]
+        publishedAt: { $notNull: true }
       },
       sort: { views: 'desc' },
       populate: articlePopulate,
