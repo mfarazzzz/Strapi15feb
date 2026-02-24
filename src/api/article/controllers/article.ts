@@ -1037,8 +1037,6 @@ Sitemap: ${origin}/news-sitemap.xml
       const origin = getPublicOrigin(ctx);
 
       // 1. Initialize filters from standard Strapi v5 syntax
-      // We clone it to avoid mutating the original request query if that matters, 
-      // but mostly to ensure we have a working object.
       const filters: Record<string, any> = ctx.query.filters 
         ? JSON.parse(JSON.stringify(ctx.query.filters)) 
         : {};
@@ -1082,11 +1080,21 @@ Sitemap: ${origin}/news-sitemap.xml
       }
 
       // 3. Handle Sorting
+      // Priority:
+      // 1. Explicit sort param from query (v5 standard)
+      // 2. Legacy orderBy/order params
+      // 3. Default: publishedAt:desc
       let sort: any = ctx.query.sort;
+
       if (!sort) {
-          const orderBy = parseString(ctx.query.orderBy) ?? DEFAULT_SORT_FIELD;
+          const orderBy = parseString(ctx.query.orderBy);
           const order = (parseString(ctx.query.order) ?? 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
-          sort = { [resolveSortField(orderBy)]: order };
+          
+          if (orderBy) {
+             sort = { [resolveSortField(orderBy)]: order };
+          } else {
+             sort = { [DEFAULT_SORT_FIELD]: 'desc' };
+          }
       }
 
       const [entities, total] = await Promise.all([
