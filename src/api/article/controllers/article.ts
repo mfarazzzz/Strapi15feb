@@ -1034,17 +1034,22 @@ Sitemap: ${origin}/news-sitemap.xml
     async find(ctx) {
       const limit = parseLimit(ctx.query.limit, 25);
       const offset = parseNumber(ctx.query.offset) ?? 0;
+      const origin = getPublicOrigin(ctx);
+
+      // 1. Initialize filters from standard Strapi v5 syntax
+      // We clone it to avoid mutating the original request query if that matters, 
+      // but mostly to ensure we have a working object.
+      const filters: Record<string, any> = ctx.query.filters 
+        ? JSON.parse(JSON.stringify(ctx.query.filters)) 
+        : {};
+
+      // 2. Merge legacy parameters if present
       const category = parseString(ctx.query.category);
       const parent = parseString(ctx.query.parent);
       const featured = parseBoolean(ctx.query.featured);
       const breaking = parseBoolean(ctx.query.breaking);
       const search = parseString(ctx.query.search);
       const author = parseString(ctx.query.author);
-      const orderBy = parseString(ctx.query.orderBy) ?? DEFAULT_SORT_FIELD;
-      const order = (parseString(ctx.query.order) ?? 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
-      const origin = getPublicOrigin(ctx);
-
-      const filters: Record<string, any> = {};
 
       if (category || parent) {
         filters.$and = filters.$and || [];
@@ -1076,7 +1081,14 @@ Sitemap: ${origin}/news-sitemap.xml
         });
       }
 
-      const sort = { [resolveSortField(orderBy)]: order };
+      // 3. Handle Sorting
+      let sort: any = ctx.query.sort;
+      if (!sort) {
+          const orderBy = parseString(ctx.query.orderBy) ?? DEFAULT_SORT_FIELD;
+          const order = (parseString(ctx.query.order) ?? 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
+          sort = { [resolveSortField(orderBy)]: order };
+      }
+
       const [entities, total] = await Promise.all([
         es.findMany('api::article.article', {
           filters,
