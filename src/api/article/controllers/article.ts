@@ -1079,13 +1079,13 @@ Sitemap: ${origin}/news-sitemap.xml
     },
 
     async find(ctx) {
-      const limit = parseLimit(ctx.query.limit, 25);
-      const offset = parseNumber(ctx.query.offset) ?? 0;
       const origin = getPublicOrigin(ctx);
 
-      const filters: Record<string, any> = ctx.query.filters 
-        ? JSON.parse(JSON.stringify(ctx.query.filters)) 
-        : {};
+      // Let Strapi parse and sanitize the query (sort, pagination, populate, filters)
+      const q: any = await (this as any).sanitizeQuery(ctx);
+
+      // Merge user-provided filters with our extra convenience parameters
+      const filters: Record<string, any> = q.filters ? JSON.parse(JSON.stringify(q.filters)) : {};
 
       const category = parseString(ctx.query.category);
       const parent = parseString(ctx.query.parent);
@@ -1124,73 +1124,63 @@ Sitemap: ${origin}/news-sitemap.xml
         });
       }
 
-      // ===== STRICT POSTGRES SAFE SORT HANDLING =====
-      // STEP 1: Log incoming raw sort from frontend
-      console.log('--- FIND REQUEST START ---');
-      console.log('QUERY PARAMS:', JSON.stringify(ctx.query, null, 2));
-      console.log('RAW SORT:', ctx.query.sort);
-      console.log('RAW SORT TYPE:', typeof ctx.query.sort);
-      console.log('RAW SORT IS ARRAY:', Array.isArray(ctx.query.sort));
+      // Normalize pagination from Strapi's sanitized query; fallback maintains compatibility
+      const start = typeof q.start === 'number' ? q.start : parseNumber(ctx.query.offset) ?? 0;
+      const limit = typeof q.limit === 'number' ? Math.min(q.limit, MAX_LIMIT) : parseLimit(ctx.query.limit, 25);
 
-      // FORCE STRICT POSTGRES SORT
-      let sortArray: any[] = [];
-
-      const rawSort = ctx.query.sort;
-
-      if (typeof rawSort === 'string') {
-        const [fieldRaw, orderRaw] = rawSort.split(':');
-        const field = resolveSortField(fieldRaw);
-        const order = orderRaw === 'asc' ? 'asc' : 'desc';
-        sortArray = [{ [field]: order }];
-      } else if (Array.isArray(rawSort)) {
-        sortArray = rawSort.map((entry: any) => {
-          if (typeof entry === 'string') {
-            const [fieldRaw, orderRaw] = entry.split(':');
-            const field = resolveSortField(fieldRaw);
-            const order = orderRaw === 'asc' ? 'asc' : 'desc';
-            return { [field]: order };
-          }
-          return entry;
-        });
-      } else if (rawSort && typeof rawSort === 'object') {
-        // Handle object format: { publishedAt: 'desc' }
-        for (const key of Object.keys(rawSort)) {
-          const field = resolveSortField(key);
-          const order = rawSort[key] === 'asc' ? 'asc' : 'desc';
-          sortArray.push({ [field]: order });
+      // Use Strapi-parsed sort but force safe fallback to publishedAt DESC
+      let sort: any = q.sort;
+      const normalizeSort = (input: any): any[] => {
+        if (!input) return [];
+        if (Array.isArray(input)) {
+          return input.map((item) => {
+            if (typeof item === 'string') {
+              const [fieldRaw, orderRaw] = item.split(':');
+              const field = resolveSortField(fieldRaw);
+              const order = orderRaw === 'asc' ? 'asc' : 'desc';
+              return { [field]: order };
+            }
+            if (item && typeof item === 'object') {
+              const entries = Object.entries(item).map(([k, v]) => ({
+                [resolveSortField(k)]: v === 'asc' ? 'asc' : 'desc',
+              }));
+              return entries[0] || { publishedAt: 'desc' };
+            }
+            return { publishedAt: 'desc' };
+          });
         }
-      }
-
-      // CRITICAL: Always default to newest first if no valid sort
-      if (!sortArray.length) {
-        sortArray = [{ publishedAt: 'desc' }];
-      }
-
-      // STEP 2: Log final sort array sent to PostgreSQL
-      console.log('FINAL SORT ARRAY:', JSON.stringify(sortArray, null, 2));
-      console.log('FINAL SORT ARRAY LENGTH:', sortArray.length);
-
-      // Validate sort array format for PostgreSQL/Strapi v5
-      if (!Array.isArray(sortArray) || sortArray.length === 0) {
-        console.error('CRITICAL: Sort array is invalid, forcing default');
-        sortArray = [{ publishedAt: 'desc' }];
+        if (typeof input === 'string') {
+          const [fieldRaw, orderRaw] = input.split(':');
+          const field = resolveSortField(fieldRaw);
+          const order = orderRaw === 'asc' ? 'asc' : 'desc';
+          return [{ [field]: order }];
+        }
+        if (input && typeof input === 'object') {
+          return Object.entries(input).map(([k, v]) => ({
+            [resolveSortField(k)]: v === 'asc' ? 'asc' : 'desc',
+          }));
+        }
+        return [];
+      };
+      let finalSort = normalizeSort(sort);
+      if (!finalSort.length) {
+        finalSort = [{ publishedAt: 'desc' }];
       }
 
       const [entities, total] = await Promise.all([
         es.findMany('api::article.article', {
           filters,
-          sort: sortArray,
+          sort: finalSort,
           populate: articlePopulate,
-          start: offset,
+          start,
           limit,
           publicationState: 'live',
         }),
         es.count('api::article.article', { filters, publicationState: 'live' }),
       ]);
 
-
       const pageSize = limit;
-      const page = pageSize > 0 ? Math.floor(offset / pageSize) + 1 : 1;
+      const page = pageSize > 0 ? Math.floor(start / pageSize) + 1 : 1;
       const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
 
       return {
