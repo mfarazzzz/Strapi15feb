@@ -682,7 +682,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
         filters: { 
           isFeatured: true,
         },
-        sort: { [DEFAULT_SORT_FIELD]: 'desc' },
+        sort: [{ [DEFAULT_SORT_FIELD]: 'desc' }],
         populate: articlePopulate,
         limit,
         publicationState: 'live',
@@ -700,7 +700,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
           isBreaking: true,
           publishedAt: { $gte: cutoff },
         },
-        sort: { [DEFAULT_SORT_FIELD]: 'desc' },
+        sort: [{ [DEFAULT_SORT_FIELD]: 'desc' }],
         populate: articlePopulate,
         limit,
         publicationState: 'live',
@@ -723,7 +723,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
           filters: {
             isFeatured: true,
           },
-          sort: { [DEFAULT_SORT_FIELD]: 'desc' },
+          sort: [{ [DEFAULT_SORT_FIELD]: 'desc' }],
           populate: articlePopulate,
           limit: featuredLimit,
           publicationState: 'live',
@@ -733,7 +733,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
             isBreaking: true,
             publishedAt: { $gte: cutoff },
           },
-          sort: { [DEFAULT_SORT_FIELD]: 'desc' },
+          sort: [{ [DEFAULT_SORT_FIELD]: 'desc' }],
           populate: articlePopulate,
           limit: limit * 2,
           publicationState: 'live',
@@ -897,7 +897,7 @@ Sitemap: ${origin}/news-sitemap.xml
       const origin = ctx.request.origin || '';
       const entities = await es.findMany('api::article.article', {
         filters: {},
-        sort: { views: 'desc' },
+        sort: [{ views: 'desc' }],
         populate: articlePopulate,
         limit,
         publicationState: 'live',
@@ -973,7 +973,7 @@ Sitemap: ${origin}/news-sitemap.xml
       const [entities, total] = await Promise.all([
         es.findMany('api::article.article', {
           filters,
-          sort: { [DEFAULT_SORT_FIELD]: 'desc' },
+          sort: [{ [DEFAULT_SORT_FIELD]: 'desc' }],
           populate: articlePopulate,
           start: offset,
           limit,
@@ -1051,12 +1051,12 @@ Sitemap: ${origin}/news-sitemap.xml
       const sortKeyWhitelist = new Set(['publishedAt', 'publishedDate', 'views', 'title', 'createdAt', 'updatedAt']);
       const sortFieldRaw = sortKeyWhitelist.has(orderBy) ? orderBy : 'publishedAt';
       const sortField = sortFieldRaw === 'publishedDate' ? 'publishedAt' : sortFieldRaw;
-      const sort = { [sortField]: order };
+      const sortArray = [{ [sortField]: order }];
 
       const [entities, total] = await Promise.all([
         es.findMany('api::article.article', {
           filters,
-          sort,
+          sort: sortArray,
           populate: articlePopulate,
           publicationState: 'preview',
           start: offset,
@@ -1125,40 +1125,59 @@ Sitemap: ${origin}/news-sitemap.xml
       }
 
       // ===== STRICT POSTGRES SAFE SORT HANDLING =====
-      let sort: any = ctx.query.sort;
+      // STEP 1: Log incoming raw sort from frontend
+      console.log('RAW SORT:', ctx.query.sort);
+      console.log('RAW SORT TYPE:', typeof ctx.query.sort);
+      console.log('RAW SORT IS ARRAY:', Array.isArray(ctx.query.sort));
 
-      if (typeof sort === 'string') {
-        const [fieldRaw, orderRaw] = sort.split(':');
+      // FORCE STRICT POSTGRES SORT
+      let sortArray: any[] = [];
+
+      const rawSort = ctx.query.sort;
+
+      if (typeof rawSort === 'string') {
+        const [fieldRaw, orderRaw] = rawSort.split(':');
         const field = resolveSortField(fieldRaw);
         const order = orderRaw === 'asc' ? 'asc' : 'desc';
-        sort = [{ [field]: order }];
-      } else if (Array.isArray(sort)) {
-        sort = sort
-          .filter((entry) => typeof entry === 'string')
-          .map((entry) => {
-            const [fieldRaw, orderRaw] = String(entry).split(':');
+        sortArray = [{ [field]: order }];
+      } else if (Array.isArray(rawSort)) {
+        sortArray = rawSort.map((entry: any) => {
+          if (typeof entry === 'string') {
+            const [fieldRaw, orderRaw] = entry.split(':');
             const field = resolveSortField(fieldRaw);
             const order = orderRaw === 'asc' ? 'asc' : 'desc';
             return { [field]: order };
-          });
-      } else if (sort && typeof sort === 'object') {
-        const normalized: any[] = [];
-        for (const key of Object.keys(sort)) {
+          }
+          return entry;
+        });
+      } else if (rawSort && typeof rawSort === 'object') {
+        // Handle object format: { publishedAt: 'desc' }
+        for (const key of Object.keys(rawSort)) {
           const field = resolveSortField(key);
-          const order = sort[key] === 'asc' ? 'asc' : 'desc';
-          normalized.push({ [field]: order });
+          const order = rawSort[key] === 'asc' ? 'asc' : 'desc';
+          sortArray.push({ [field]: order });
         }
-        sort = normalized;
       }
 
-      if (!sort || !Array.isArray(sort) || sort.length === 0) {
-        sort = [{ publishedAt: 'desc' }];
+      // CRITICAL: Always default to newest first if no valid sort
+      if (!sortArray.length) {
+        sortArray = [{ publishedAt: 'desc' }];
+      }
+
+      // STEP 2: Log final sort array sent to PostgreSQL
+      console.log('FINAL SORT ARRAY:', JSON.stringify(sortArray, null, 2));
+      console.log('FINAL SORT ARRAY LENGTH:', sortArray.length);
+
+      // Validate sort array format for PostgreSQL/Strapi v5
+      if (!Array.isArray(sortArray) || sortArray.length === 0) {
+        console.error('CRITICAL: Sort array is invalid, forcing default');
+        sortArray = [{ publishedAt: 'desc' }];
       }
 
       const [entities, total] = await Promise.all([
         es.findMany('api::article.article', {
           filters,
-          sort,
+          sort: sortArray,
           populate: articlePopulate,
           start: offset,
           limit,

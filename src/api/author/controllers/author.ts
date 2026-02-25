@@ -89,7 +89,7 @@ export default factories.createCoreController('api::author.author', ({ strapi })
   async find(ctx) {
     const origin = ctx.request.origin || '';
     const entities = await strapi.entityService.findMany(AUTHOR_UID, {
-      sort: { name: 'asc' },
+      sort: [{ name: 'asc' }],
       limit: 1000,
       populate: { avatar: true, profile_image: true, cover_image: true, user: { populate: { role: true } } },
     });
