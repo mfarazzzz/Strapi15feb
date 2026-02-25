@@ -1124,6 +1124,10 @@ Sitemap: ${origin}/news-sitemap.xml
         });
       }
 
+      if (filters.publishedAt === undefined) {
+        (filters as any).publishedAt = { $notNull: true };
+      }
+
       // Normalize pagination from Strapi's sanitized query; fallback maintains compatibility
       const start = typeof q.start === 'number' ? q.start : parseNumber(ctx.query.offset) ?? 0;
       const limit = typeof q.limit === 'number' ? Math.min(q.limit, MAX_LIMIT) : parseLimit(ctx.query.limit, 25);
@@ -1174,9 +1178,9 @@ Sitemap: ${origin}/news-sitemap.xml
           populate: articlePopulate,
           start,
           limit,
-          publicationState: 'live',
+          publicationState: 'preview',
         }),
-        es.count('api::article.article', { filters, publicationState: 'live' }),
+        es.count('api::article.article', { filters, publicationState: 'preview' }),
       ]);
 
       const pageSize = limit;
