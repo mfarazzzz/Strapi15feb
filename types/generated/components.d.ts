@@ -1,5 +1,28 @@
 import type { Schema, Struct } from '@strapi/strapi';
 
+export interface SeoMetadata extends Struct.ComponentSchema {
+  collectionName: 'components_seo_metadata';
+  info: {
+    description: 'Reusable SEO fields';
+    displayName: 'SEO Metadata';
+  };
+  attributes: {
+    canonicalURL: Schema.Attribute.String;
+    metaDescription: Schema.Attribute.Text &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 160;
+      }>;
+    metaTitle: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 70;
+      }>;
+    ogImage: Schema.Attribute.Media<'images'>;
+    structuredData: Schema.Attribute.JSON;
+  };
+}
+
 export interface SharedAddress extends Struct.ComponentSchema {
   collectionName: 'components_shared_addresses';
   info: {
@@ -78,6 +101,7 @@ export interface SharedSociallinks extends Struct.ComponentSchema {
 declare module '@strapi/strapi' {
   export module Public {
     export interface ComponentSchemas {
+      'seo.metadata': SeoMetadata;
       'shared.address': SharedAddress;
       'shared.contact': SharedContact;
       'shared.seo': SharedSeo;

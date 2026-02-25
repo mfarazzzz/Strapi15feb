@@ -433,7 +433,8 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
 export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
   collectionName: 'articles';
   info: {
-    displayName: 'Article';
+    description: 'Standard news articles with breaking and featured flags.';
+    displayName: 'News Article';
     pluralName: 'articles';
     singularName: 'article';
   };
@@ -444,17 +445,29 @@ export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
     author: Schema.Attribute.Relation<'manyToOne', 'api::author.author'> &
       Schema.Attribute.Required;
     canonicalUrl: Schema.Attribute.String;
+    categories: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::category.category'
+    >;
     category: Schema.Attribute.Relation<'manyToOne', 'api::category.category'> &
       Schema.Attribute.Required;
     content: Schema.Attribute.RichText & Schema.Attribute.Required;
-    contentHindi: Schema.Attribute.RichText;
+    contentType: Schema.Attribute.Enumeration<
+      ['news', 'editorial', 'review', 'interview', 'opinion', 'special-report']
+    > &
+      Schema.Attribute.DefaultTo<'news'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    excerpt: Schema.Attribute.Text;
-    excerptHindi: Schema.Attribute.Text;
-    image: Schema.Attribute.Media<'images'>;
+    discoverEligible: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    excerpt: Schema.Attribute.Text & Schema.Attribute.Required;
+    featured_image: Schema.Attribute.Media<'images'> &
+      Schema.Attribute.Required;
+    focus_keyword: Schema.Attribute.String;
+    heroPriority: Schema.Attribute.Integer;
     isBreaking: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    isEditorsPick: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     isFeatured: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -462,22 +475,40 @@ export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
       'api::article.article'
     > &
       Schema.Attribute.Private;
+    location: Schema.Attribute.String;
+    meta_description: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 160;
+      }>;
+    news_category: Schema.Attribute.Enumeration<
+      [
+        'Local',
+        'State',
+        'National',
+        'Politics',
+        'Crime',
+        'Education',
+        'Sports',
+        'Business',
+      ]
+    > &
+      Schema.Attribute.Required;
     newsKeywords: Schema.Attribute.Text;
     publishedAt: Schema.Attribute.DateTime;
     readTime: Schema.Attribute.String &
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 30;
       }>;
-    scheduledAt: Schema.Attribute.DateTime;
     schemaJson: Schema.Attribute.JSON;
-    seoDescription: Schema.Attribute.Text &
-      Schema.Attribute.SetMinMaxLength<{
-        maxLength: 160;
-      }>;
-    seoOverride: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     seoTitle: Schema.Attribute.String &
       Schema.Attribute.SetMinMaxLength<{
-        maxLength: 60;
+        maxLength: 70;
+      }>;
+    short_headline: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 110;
       }>;
     slug: Schema.Attribute.UID<'title'> &
       Schema.Attribute.Required &
@@ -488,25 +519,151 @@ export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 200;
       }>;
-    titleHindi: Schema.Attribute.String &
-      Schema.Attribute.SetMinMaxLength<{
-        maxLength: 200;
-      }>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     videoTitle: Schema.Attribute.String;
-    videoType: Schema.Attribute.Enumeration<['youtube', 'upload', 'none']> &
+    videoType: Schema.Attribute.Enumeration<['none', 'youtube', 'local']> &
       Schema.Attribute.DefaultTo<'none'>;
     videoUrl: Schema.Attribute.String;
     views: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
   };
 }
 
+export interface ApiAuthorAuthor extends Struct.CollectionTypeSchema {
+  collectionName: 'authors';
+  info: {
+    displayName: 'Author';
+    pluralName: 'authors';
+    singularName: 'author';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    articles: Schema.Attribute.Relation<'oneToMany', 'api::article.article'>;
+    avatar: Schema.Attribute.Media<'images'>;
+    bio: Schema.Attribute.RichText;
+    bioHindi: Schema.Attribute.RichText;
+    cover_image: Schema.Attribute.Media<'images'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    designation: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    editorials: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::editorial.editorial'
+    >;
+    email: Schema.Attribute.Email & Schema.Attribute.Unique;
+    experience: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    expertise: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    facebookUrl: Schema.Attribute.String;
+    instagramUrl: Schema.Attribute.String;
+    knowsAbout: Schema.Attribute.JSON;
+    linkedinUrl: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::author.author'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 120;
+      }>;
+    nameHindi: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 120;
+      }>;
+    otherRoles: Schema.Attribute.String;
+    profession: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    profile_image: Schema.Attribute.Media<'images'>;
+    publishedAt: Schema.Attribute.DateTime;
+    role: Schema.Attribute.Enumeration<
+      ['admin', 'editor', 'author', 'contributor']
+    > &
+      Schema.Attribute.DefaultTo<'author'>;
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Unique;
+    socialLinks: Schema.Attribute.JSON;
+    twitterUrl: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
+    websiteUrl: Schema.Attribute.String;
+    whatsappUrl: Schema.Attribute.String;
+  };
+}
+
+export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
+  collectionName: 'categories';
+  info: {
+    displayName: 'Category';
+    pluralName: 'categories';
+    singularName: 'category';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    articles: Schema.Attribute.Relation<'oneToMany', 'api::article.article'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    descriptionHindi: Schema.Attribute.Text;
+    editorials: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::editorial.editorial'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::category.category'
+    > &
+      Schema.Attribute.Private;
+    order: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    parent: Schema.Attribute.Relation<'manyToOne', 'api::category.category'>;
+    path: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    seo: Schema.Attribute.Component<'seo.metadata', false>;
+    slug: Schema.Attribute.UID<'titleEnglish'> & Schema.Attribute.Unique;
+    titleEnglish: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 120;
+      }>;
+    titleHindi: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 120;
+      }>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiEditorialEditorial extends Struct.CollectionTypeSchema {
   collectionName: 'editorials';
   info: {
-    description: 'Opinion, analysis and special editorial content — separate from regular news articles.';
+    description: 'Opinion, analysis and special editorial content \u2014 separate from regular news articles.';
     displayName: 'Editorial Article';
     pluralName: 'editorials';
     singularName: 'editorial';
@@ -577,95 +734,62 @@ export interface ApiEditorialEditorial extends Struct.CollectionTypeSchema {
   };
 }
 
-export interface ApiAuthorAuthor extends Struct.CollectionTypeSchema {
-  collectionName: 'authors';
+export interface ApiEducationNewsEducationNews
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'education_news';
   info: {
-    displayName: 'Author';
-    pluralName: 'authors';
-    singularName: 'author';
+    displayName: 'Education News';
+    pluralName: 'education-news-items';
+    singularName: 'education-news';
   };
   options: {
-    draftAndPublish: false;
+    draftAndPublish: true;
   };
   attributes: {
-    articles: Schema.Attribute.Relation<'oneToMany', 'api::article.article'>;
-    avatar: Schema.Attribute.Media<'images'>;
-    cover_image: Schema.Attribute.Media<'images'>;
-    bio: Schema.Attribute.RichText;
-    bioHindi: Schema.Attribute.RichText;
+    author: Schema.Attribute.String;
+    category: Schema.Attribute.Enumeration<
+      [
+        'board-news',
+        'exam-news',
+        'result-news',
+        'admission-news',
+        'scholarship',
+        'government-order',
+      ]
+    > &
+      Schema.Attribute.Required;
+    content: Schema.Attribute.RichText;
+    contentHindi: Schema.Attribute.RichText;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    email: Schema.Attribute.Email &
-      Schema.Attribute.Required &
-      Schema.Attribute.Unique;
+    excerpt: Schema.Attribute.Text;
+    excerptHindi: Schema.Attribute.Text;
+    image: Schema.Attribute.Media<'images'>;
+    isBreaking: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    isFeatured: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    isImportant: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
-      'api::author.author'
+      'api::education-news.education-news'
     > &
       Schema.Attribute.Private;
-    name: Schema.Attribute.String &
+    publishedAt: Schema.Attribute.DateTime;
+    relatedExams: Schema.Attribute.JSON;
+    relatedResults: Schema.Attribute.JSON;
+    slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Unique;
+    source: Schema.Attribute.String;
+    sourceLink: Schema.Attribute.String;
+    tags: Schema.Attribute.JSON;
+    title: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMaxLength<{
-        maxLength: 120;
-      }>;
-    nameHindi: Schema.Attribute.String &
-      Schema.Attribute.SetMinMaxLength<{
-        maxLength: 120;
-      }>;
-    publishedAt: Schema.Attribute.DateTime;
-    role: Schema.Attribute.Enumeration<
-      ['admin', 'editor', 'author', 'contributor']
-    > &
-      Schema.Attribute.DefaultTo<'author'>;
-    updatedAt: Schema.Attribute.DateTime;
-    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    user: Schema.Attribute.Relation<
-      'oneToOne',
-      'plugin::users-permissions.user'
-    >;
-  };
-}
-
-export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
-  collectionName: 'categories';
-  info: {
-    displayName: 'Category';
-    pluralName: 'categories';
-    singularName: 'category';
-  };
-  options: {
-    draftAndPublish: false;
-  };
-  attributes: {
-    articles: Schema.Attribute.Relation<'oneToMany', 'api::article.article'>;
-    createdAt: Schema.Attribute.DateTime;
-    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    description: Schema.Attribute.Text;
-    descriptionHindi: Schema.Attribute.Text;
-    locale: Schema.Attribute.String & Schema.Attribute.Private;
-    localizations: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::category.category'
-    > &
-      Schema.Attribute.Private;
-    order: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
-    parent: Schema.Attribute.Relation<'manyToOne', 'api::category.category'>;
-    path: Schema.Attribute.String & Schema.Attribute.Required;
-    publishedAt: Schema.Attribute.DateTime;
-    slug: Schema.Attribute.UID<'titleEnglish'> & Schema.Attribute.Unique;
-    titleEnglish: Schema.Attribute.String &
-      Schema.Attribute.Required &
-      Schema.Attribute.SetMinMaxLength<{
-        maxLength: 120;
+        maxLength: 250;
       }>;
     titleHindi: Schema.Attribute.String &
-      Schema.Attribute.Required &
       Schema.Attribute.SetMinMaxLength<{
-        maxLength: 120;
+        maxLength: 250;
       }>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -765,6 +889,9 @@ export interface ApiExamExam extends Struct.CollectionTypeSchema {
     eligibility: Schema.Attribute.RichText;
     eligibilityHindi: Schema.Attribute.RichText;
     examDate: Schema.Attribute.Date & Schema.Attribute.Required;
+    examStatus: Schema.Attribute.Enumeration<
+      ['upcoming', 'ongoing', 'completed']
+    >;
     image: Schema.Attribute.Media<'images'>;
     isFeatured: Schema.Attribute.Boolean;
     isLive: Schema.Attribute.Boolean;
@@ -790,7 +917,6 @@ export interface ApiExamExam extends Struct.CollectionTypeSchema {
     >;
     seo: Schema.Attribute.Component<'shared.seo', false>;
     slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Unique;
-    status: Schema.Attribute.Enumeration<['upcoming', 'ongoing', 'completed']>;
     subcategory: Schema.Attribute.String;
     title: Schema.Attribute.String &
       Schema.Attribute.Required &
@@ -1062,6 +1188,7 @@ export interface ApiPagePage extends Struct.CollectionTypeSchema {
     order: Schema.Attribute.Integer;
     path: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
+    seo: Schema.Attribute.Component<'seo.metadata', false>;
     slug: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.Unique;
@@ -1252,6 +1379,8 @@ export interface ApiSitesettingSitesetting extends Struct.SingleTypeSchema {
   };
   attributes: {
     address: Schema.Attribute.Component<'shared.address', false>;
+    backlinkNotes: Schema.Attribute.Text;
+    backlinkReportUrl: Schema.Attribute.String;
     contactEmail: Schema.Attribute.Email;
     contactPhone: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
@@ -1266,6 +1395,9 @@ export interface ApiSitesettingSitesetting extends Struct.SingleTypeSchema {
     footerTextHindi: Schema.Attribute.RichText;
     googleAdsenseId: Schema.Attribute.String;
     googleAnalyticsId: Schema.Attribute.String;
+    gscExportUrl: Schema.Attribute.String;
+    gscPropertyUrl: Schema.Attribute.String;
+    lastBacklinkSync: Schema.Attribute.DateTime;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -1274,6 +1406,7 @@ export interface ApiSitesettingSitesetting extends Struct.SingleTypeSchema {
       Schema.Attribute.Private;
     logo: Schema.Attribute.Media<'images'>;
     publishedAt: Schema.Attribute.DateTime;
+    referringDomains: Schema.Attribute.JSON;
     siteName: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'Rampur News'>;
@@ -1839,8 +1972,9 @@ declare module '@strapi/strapi' {
       'admin::user': AdminUser;
       'api::article.article': ApiArticleArticle;
       'api::author.author': ApiAuthorAuthor;
-      'api::editorial.editorial': ApiEditorialEditorial;
       'api::category.category': ApiCategoryCategory;
+      'api::editorial.editorial': ApiEditorialEditorial;
+      'api::education-news.education-news': ApiEducationNewsEducationNews;
       'api::event.event': ApiEventEvent;
       'api::exam.exam': ApiExamExam;
       'api::holiday.holiday': ApiHolidayHoliday;

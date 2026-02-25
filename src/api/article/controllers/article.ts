@@ -10,7 +10,7 @@ const EDITORIAL_CONTENT_TYPES = ['editorial', 'review', 'interview', 'opinion', 
 const DEFAULT_SORT_FIELD = 'publishedAt';
 
 const resolveSortField = (orderBy: string | undefined) => {
-  const sortKeyWhitelist = new Set(['publishedAt', 'createdAt', 'views', 'title']);
+  const sortKeyWhitelist = new Set(['publishedAt', 'createdAt', 'views', 'title', 'id']);
   const sortFieldRaw = orderBy && sortKeyWhitelist.has(orderBy) ? orderBy : DEFAULT_SORT_FIELD;
   if (sortFieldRaw === 'publishedDate') return 'publishedAt';
   return sortFieldRaw;
@@ -1126,6 +1126,8 @@ Sitemap: ${origin}/news-sitemap.xml
 
       // ===== STRICT POSTGRES SAFE SORT HANDLING =====
       // STEP 1: Log incoming raw sort from frontend
+      console.log('--- FIND REQUEST START ---');
+      console.log('QUERY PARAMS:', JSON.stringify(ctx.query, null, 2));
       console.log('RAW SORT:', ctx.query.sort);
       console.log('RAW SORT TYPE:', typeof ctx.query.sort);
       console.log('RAW SORT IS ARRAY:', Array.isArray(ctx.query.sort));
