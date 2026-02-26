@@ -30,6 +30,12 @@
       ]
     },
     {
+      "name": "articles_category_idx",
+      "columns": [
+        "category_id"
+      ]
+    },
+    {
       "name": "articles_heroPriority_idx",
       "columns": [
         "hero_priority"

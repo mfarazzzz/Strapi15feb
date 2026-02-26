@@ -49,6 +49,15 @@ export default ({ env }) => {
     },
     'strapi::compression',
     'strapi::query',
+    {
+      name: 'global::redis-cache',
+      config: {
+        enabled: env.bool('REDIS_CACHE_ENABLED', true),
+        url: env('REDIS_URL', ''),
+        ttlSeconds: env.int('REDIS_CACHE_TTL', 60),
+        keyPrefix: env('REDIS_CACHE_PREFIX', 'strapi-cache'),
+      },
+    },
     'global::cache-control',
     {
       name: 'strapi::body',

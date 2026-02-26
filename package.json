@@ -21,6 +21,7 @@
     "@webbycrown/strapi-advanced-sitemap": "^1.0.6",
     "better-sqlite3": "12.6.2",
     "pg": "^8.13.1",
+    "redis": "^4.7.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
