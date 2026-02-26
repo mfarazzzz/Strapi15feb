@@ -995,6 +995,40 @@ Sitemap: ${origin}/news-sitemap.xml
       };
     },
 
+    async find(ctx) {
+      const origin = getPublicOrigin(ctx);
+      const q: any = await (this as any).sanitizeQuery(ctx);
+      const filters: Record<string, any> = q.filters ? JSON.parse(JSON.stringify(q.filters)) : {};
+      const start = typeof q.start === 'number' ? q.start : 0;
+      const limit = typeof q.limit === 'number' ? Math.min(q.limit, MAX_LIMIT) : 25;
+      const sort = q.sort && Array.isArray(q.sort) && q.sort.length > 0 ? q.sort : [{ publishedAt: 'desc' }];
+      const publicationState = q.publicationState || 'live';
+
+      const [entities, total] = await Promise.all([
+        es.findMany('api::article.article', {
+          filters,
+          sort,
+          populate: articlePopulate,
+          start,
+          limit,
+          publicationState,
+        }),
+        es.count('api::article.article', { filters, publicationState }),
+      ]);
+
+      const pageSize = limit;
+      const page = pageSize > 0 ? Math.floor(start / pageSize) + 1 : 1;
+      const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
+
+      return {
+        data: (entities as any[]).map((e) => normalizeArticle(e, origin)),
+        total,
+        page,
+        pageSize,
+        totalPages,
+      };
+    },
+
     async adminFind(ctx) {
       const limit = parseLimit(ctx.query.limit, 25);
       const offset = parseNumber(ctx.query.offset) ?? 0;

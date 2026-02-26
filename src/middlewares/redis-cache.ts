@@ -41,6 +41,30 @@ export default (config: CacheConfig) => {
       return;
     }
 
+    const authHeader =
+      ctx.request?.header?.authorization ||
+      ctx.request?.headers?.authorization ||
+      ctx.headers?.authorization;
+    const hasAuth = typeof authHeader === 'string' && authHeader.trim() !== '';
+    if (hasAuth || ctx.state?.user) {
+      await next();
+      return;
+    }
+
+    const allowList = [
+      '/api/articles',
+      '/api/editorials',
+      '/api/categories',
+      '/api/authors',
+      '/api/tags',
+      '/api/settings',
+    ];
+    const isAllowed = allowList.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+    if (!isAllowed) {
+      await next();
+      return;
+    }
+
     const redis = await getClient(config);
     if (!redis) {
       await next();

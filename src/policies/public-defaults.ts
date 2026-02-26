@@ -12,6 +12,10 @@ export default async (policyContext: any) => {
     ctx.query.sort = 'publishedAt:desc';
   }
 
+  if (!ctx.query.locale) {
+    ctx.query.locale = 'hi';
+  }
+
   const pagination = typeof ctx.query.pagination === 'object' && ctx.query.pagination ? ctx.query.pagination : {};
   const pageRaw = pagination.page ?? ctx.query.page;
   const pageSizeRaw = pagination.pageSize ?? ctx.query.pageSize;
@@ -26,4 +30,3 @@ export default async (policyContext: any) => {
 
   return true;
 };
-

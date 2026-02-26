@@ -25,19 +25,19 @@ export default {
       method: 'GET',
       path: '/editorials',
       handler: 'editorial.find',
-      config: { auth: false },
+      config: { auth: false, policies: ['global::public-defaults'] },
     },
     {
       method: 'GET',
       path: '/editorials/slug/:slug',
       handler: 'editorial.findBySlug',
-      config: { auth: false },
+      config: { auth: false, policies: ['global::public-defaults'] },
     },
     {
       method: 'GET',
       path: '/editorials/:id',
       handler: 'editorial.findOne',
-      config: { auth: false },
+      config: { auth: false, policies: ['global::public-defaults'] },
     },
 
     // ─── Write routes (authenticated, cms-role policy) ──────────────────────

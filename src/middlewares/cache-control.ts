@@ -11,7 +11,20 @@ export default (config: any, { strapi }: { strapi: any }) => {
     }
 
     if (path.startsWith('/api')) {
-      ctx.set('Cache-Control', 'public, max-age=300, s-maxage=600, stale-while-revalidate=600');
+      const allowList = [
+        '/api/articles',
+        '/api/editorials',
+        '/api/categories',
+        '/api/authors',
+        '/api/tags',
+        '/api/settings',
+      ];
+      const isAllowed = allowList.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+      if (isAllowed) {
+        ctx.set('Cache-Control', 'public, max-age=300, s-maxage=600, stale-while-revalidate=600');
+      } else {
+        ctx.set('Cache-Control', 'no-store');
+      }
       return;
     }
   };
