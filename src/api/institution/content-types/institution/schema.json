@@ -15,18 +15,6 @@
       "columns": [
         "slug"
       ]
-    },
-    {
-      "name": "institutions_type_idx",
-      "columns": [
-        "type"
-      ]
-    },
-    {
-      "name": "institutions_featured_idx",
-      "columns": [
-        "is_featured"
-      ]
     }
   ],
   "attributes": {

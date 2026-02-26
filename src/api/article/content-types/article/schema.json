@@ -18,45 +18,9 @@
       ]
     },
     {
-      "name": "articles_views_idx",
-      "columns": [
-        "views"
-      ]
-    },
-    {
       "name": "articles_publishedAt_idx",
       "columns": [
         "published_at"
-      ]
-    },
-    {
-      "name": "articles_category_idx",
-      "columns": [
-        "category_id"
-      ]
-    },
-    {
-      "name": "articles_heroPriority_idx",
-      "columns": [
-        "hero_priority"
-      ]
-    },
-    {
-      "name": "articles_isEditorsPick_idx",
-      "columns": [
-        "is_editors_pick"
-      ]
-    },
-    {
-      "name": "articles_contentType_idx",
-      "columns": [
-        "content_type"
-      ]
-    },
-    {
-      "name": "articles_newsCategory_idx",
-      "columns": [
-        "news_category"
       ]
     }
   ],

@@ -15,12 +15,6 @@
       "columns": [
         "slug"
       ]
-    },
-    {
-      "name": "education_news_category_idx",
-      "columns": [
-        "category"
-      ]
     }
   ],
   "attributes": {

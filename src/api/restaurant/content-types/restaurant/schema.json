@@ -15,12 +15,6 @@
       "columns": [
         "slug"
       ]
-    },
-    {
-      "name": "restaurants_featured_idx",
-      "columns": [
-        "is_featured"
-      ]
     }
   ],
   "attributes": {

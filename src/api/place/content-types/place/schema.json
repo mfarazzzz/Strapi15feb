@@ -15,18 +15,6 @@
       "columns": [
         "slug"
       ]
-    },
-    {
-      "name": "places_type_idx",
-      "columns": [
-        "type"
-      ]
-    },
-    {
-      "name": "places_featured_idx",
-      "columns": [
-        "is_featured"
-      ]
     }
   ],
   "attributes": {

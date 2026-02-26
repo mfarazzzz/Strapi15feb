@@ -15,18 +15,6 @@
       "columns": [
         "slug"
       ]
-    },
-    {
-      "name": "holidays_date_idx",
-      "columns": [
-        "date"
-      ]
-    },
-    {
-      "name": "holidays_type_idx",
-      "columns": [
-        "type"
-      ]
     }
   ],
   "attributes": {

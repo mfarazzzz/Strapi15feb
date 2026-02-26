@@ -15,24 +15,6 @@
       "columns": [
         "slug"
       ]
-    },
-    {
-      "name": "events_startDate_idx",
-      "columns": [
-        "start_date"
-      ]
-    },
-    {
-      "name": "events_category_idx",
-      "columns": [
-        "category"
-      ]
-    },
-    {
-      "name": "events_featured_idx",
-      "columns": [
-        "is_featured"
-      ]
     }
   ],
   "attributes": {

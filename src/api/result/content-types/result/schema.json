@@ -15,24 +15,6 @@
       "columns": [
         "slug"
       ]
-    },
-    {
-      "name": "results_resultDate_idx",
-      "columns": [
-        "result_date"
-      ]
-    },
-    {
-      "name": "results_status_idx",
-      "columns": [
-        "status"
-      ]
-    },
-    {
-      "name": "results_featured_idx",
-      "columns": [
-        "is_featured"
-      ]
     }
   ],
   "attributes": {

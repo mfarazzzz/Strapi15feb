@@ -9,14 +9,6 @@
   "options": {
     "draftAndPublish": false
   },
-  "indexes": [
-    {
-      "name": "authors_email_idx",
-      "columns": [
-        "email"
-      ]
-    }
-  ],
   "attributes": {
     "slug": {
       "type": "uid",

@@ -15,24 +15,6 @@
       "columns": [
         "slug"
       ]
-    },
-    {
-      "name": "exams_examDate_idx",
-      "columns": [
-        "exam_date"
-      ]
-    },
-    {
-      "name": "exams_examStatus_idx",
-      "columns": [
-        "exam_status"
-      ]
-    },
-    {
-      "name": "exams_featured_idx",
-      "columns": [
-        "is_featured"
-      ]
     }
   ],
   "attributes": {

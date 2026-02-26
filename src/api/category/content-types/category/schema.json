@@ -15,18 +15,6 @@
       "columns": [
         "slug"
       ]
-    },
-    {
-      "name": "categories_path_idx",
-      "columns": [
-        "path"
-      ]
-    },
-    {
-      "name": "categories_order_idx",
-      "columns": [
-        "order"
-      ]
     }
   ],
   "attributes": {

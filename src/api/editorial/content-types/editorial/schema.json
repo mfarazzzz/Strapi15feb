@@ -18,45 +18,9 @@
       ]
     },
     {
-      "name": "editorials_editorialType_idx",
-      "columns": [
-        "editorial_type"
-      ]
-    },
-    {
-      "name": "editorials_isEditorsPick_idx",
-      "columns": [
-        "is_editors_pick"
-      ]
-    },
-    {
-      "name": "editorials_isFeatured_idx",
-      "columns": [
-        "is_featured"
-      ]
-    },
-    {
-      "name": "editorials_views_idx",
-      "columns": [
-        "views"
-      ]
-    },
-    {
-      "name": "editorials_scheduledAt_idx",
-      "columns": [
-        "scheduled_at"
-      ]
-    },
-    {
       "name": "editorials_publishedAt_idx",
       "columns": [
         "published_at"
-      ]
-    },
-    {
-      "name": "editorials_heroPriority_idx",
-      "columns": [
-        "hero_priority"
       ]
     }
   ],
