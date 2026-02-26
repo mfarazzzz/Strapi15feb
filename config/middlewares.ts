@@ -17,6 +17,7 @@ export default ({ env }) => {
 
   return [
     'strapi::logger',
+    'global::request-context',
     {
       name: 'global::slow-request',
       config: {
