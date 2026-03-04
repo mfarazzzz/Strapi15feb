@@ -15,16 +15,17 @@
     "upgrade:dry": "npx --yes @strapi/upgrade latest --dry --yes"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@strapi/plugin-cloud": "^5.37.1",
     "@strapi/plugin-users-permissions": "^5.37.1",
     "@strapi/strapi": "^5.37.1",
     "@webbycrown/strapi-advanced-sitemap": "^1.0.6",
     "better-sqlite3": "12.6.2",
     "pg": "^8.13.1",
-    "redis": "^4.7.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
+    "redis": "^4.7.0",
     "strapi-plugin-auto-slug-manager-a-mi13": "^1.1.0",
     "styled-components": "^6.0.0"
   },
