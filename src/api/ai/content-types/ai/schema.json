@@ -1,0 +1,13 @@
+{
+  "kind": "singleType",
+  "collectionName": "ais",
+  "info": {
+    "singularName": "ai",
+    "pluralName": "ais",
+    "displayName": "AI"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {}
+}

@@ -1,10 +1,11 @@
-module.exports = {
+export default {
   routes: [
     {
       method: "POST",
       path: "/ai/generate",
       handler: "ai.generateArticle",
       config: {
+        auth: false,
         policies: [],
         middlewares: ["api::ai.rate-limit"], // Rate limit for AI generation
       },
@@ -14,6 +15,7 @@ module.exports = {
       path: "/ai/summarize",
       handler: "ai.summarize",
       config: {
+        auth: false,
         policies: [],
       },
     },
@@ -22,6 +24,7 @@ module.exports = {
       path: "/ai/discover",
       handler: "ai.discoverHeadline",
       config: {
+        auth: false,
         policies: [],
       },
     },

@@ -1,5 +1,3 @@
-"use strict";
-
 /**
  * Rate limit middleware for AI generation.
  * Limits AI requests to 30 per minute globally.
@@ -9,7 +7,7 @@ const requestsMap = new Map();
 const LIMIT = 30; // Max 30 requests per minute
 const WINDOW_MS = 60 * 1000; // 1 minute window
 
-module.exports = (config, { strapi }) => {
+export default (config, { strapi }) => {
   return async (ctx, next) => {
     const now = Date.now();
     const globalRequests = requestsMap.get("global_ai_requests") || [];

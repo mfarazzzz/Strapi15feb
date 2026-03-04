@@ -1,5 +1,22 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const slugify = require("../utils/slugify");
+
+/**
+ * Utility to convert string to URL-friendly slug
+ * Rules: lowercase, spaces -> hyphen, remove special characters
+ */
+const slugify = (text) => {
+  if (!text) return "";
+  
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")           // Replace spaces with -
+    .replace(/[^\w\-]+/g, "")       // Remove all non-word chars
+    .replace(/\-\-+/g, "-")         // Replace multiple - with single -
+    .replace(/^-+/, "")             // Trim - from start of text
+    .replace(/-+$/, "");            // Trim - from end of text
+};
 
 /**
  * AI News Generator Service
@@ -14,7 +31,7 @@ module.exports = ({ strapi }) => ({
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
     const prompt = `
       You are an expert Hindi news editor. Based on the following draft news report, generate a complete, SEO-optimized news article in formal Hindi.
@@ -89,6 +106,36 @@ module.exports = ({ strapi }) => ({
   async generateSummary(content) {
     const apiKey = process.env.GEMINI_API_KEY;
     const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+
+    const prompt = `
+      Based on the following news content, generate a short summary and social media captions in Hindi.
+      
+      CONTENT: "${content}"
+      
+      RETURN JSON ONLY:
+      {
+        "summary": "2 line concise summary",
+        "social_caption": "Engaging caption with emojis for Facebook/Instagram",
+        "whatsapp_caption": "Informative caption for WhatsApp groups"
+      }
+    `;
+
+    try {
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      let text = response.text();
+      text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+      return JSON.parse(text);
+    } catch (error) {
+      strapi.log.error(`AI Summary Error: ${error.message}`);
+      return null;
+    }
+  },
+
+  async generateSummaryLegacy(content) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `
@@ -119,7 +166,7 @@ module.exports = ({ strapi }) => ({
   async generateDiscoverHeadline(content) {
     const apiKey = process.env.GEMINI_API_KEY;
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
     const prompt = `
       Create one emotional and curiosity-driven Hindi headline for Google Discover from this news:

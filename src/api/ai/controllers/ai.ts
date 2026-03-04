@@ -1,13 +1,6 @@
-"use strict";
+import { factories } from "@strapi/strapi";
 
-const aiNewsGenerator = require("../../../services/ai-news-generator");
-
-/**
- * AI Controller
- * Exposes AI news generation via API endpoint.
- */
-
-module.exports = {
+export default factories.createCoreController("api::ai.ai", ({ strapi }) => ({
   async generateArticle(ctx) {
     const { draft } = ctx.request.body;
 
@@ -16,6 +9,10 @@ module.exports = {
     }
 
     try {
+      // Import dynamically using absolute path to bypass relative resolution issues in dist
+      const path = require("path");
+      const servicePath = path.join(process.cwd(), "src/api/ai/services/ai-news-generator.js");
+      const aiNewsGenerator = require(servicePath);
       const generator = aiNewsGenerator({ strapi });
       const articleData = await generator.generateNewsArticle(draft);
       
@@ -34,6 +31,9 @@ module.exports = {
     }
 
     try {
+      const path = require("path");
+      const servicePath = path.join(process.cwd(), "src/api/ai/services/ai-news-generator.js");
+      const aiNewsGenerator = require(servicePath);
       const generator = aiNewsGenerator({ strapi });
       const summary = await generator.generateSummary(content);
       
@@ -52,6 +52,9 @@ module.exports = {
     }
 
     try {
+      const path = require("path");
+      const servicePath = path.join(process.cwd(), "src/api/ai/services/ai-news-generator.js");
+      const aiNewsGenerator = require(servicePath);
       const generator = aiNewsGenerator({ strapi });
       const headline = await generator.generateDiscoverHeadline(content);
       
@@ -60,5 +63,5 @@ module.exports = {
       strapi.log.error(`AI Controller Discover Error: ${error.message}`);
       return ctx.internalServerError("Failed to generate Google Discover headline.");
     }
-  }
-};
+  },
+}));
