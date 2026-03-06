@@ -22,6 +22,12 @@
       "columns": [
         "published_at"
       ]
+    },
+    {
+      "name": "articles_views_idx",
+      "columns": [
+        "views"
+      ]
     }
   ],
   "attributes": {
@@ -156,6 +162,10 @@
       "maxLength": 110
     },
     "views": {
+      "type": "integer",
+      "default": 0
+    },
+    "shares": {
       "type": "integer",
       "default": 0
     },

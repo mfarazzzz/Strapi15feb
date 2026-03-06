@@ -68,12 +68,6 @@ export default {
     },
     {
       method: 'GET',
-      path: '/sitemap.xml',
-      handler: 'article.sitemap',
-      config: { auth: false },
-    },
-    {
-      method: 'GET',
       path: '/robots.txt',
       handler: 'article.robots',
       config: { auth: false },

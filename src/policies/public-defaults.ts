@@ -3,6 +3,7 @@ const MAX_PAGE_SIZE = 100;
 export default async (policyContext: any) => {
   const ctx = policyContext;
   if (!ctx || !ctx.query) return true;
+  if (ctx.state?.admin) return true;
 
   if (!ctx.query.publicationState) {
     ctx.query.publicationState = 'live';

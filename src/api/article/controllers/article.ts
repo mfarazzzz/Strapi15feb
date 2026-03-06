@@ -1,4 +1,5 @@
 import { factories } from '@strapi/strapi';
+import trendingService from '../services/trending';
 
 const MAX_LIMIT = 5000;
 const SITE_URL =
@@ -8,6 +9,13 @@ const SITE_URL =
 const EDITORIAL_CATEGORY_SLUG = 'editorials';
 const EDITORIAL_CONTENT_TYPES = ['editorial', 'review', 'interview', 'opinion', 'special-report'] as const;
 const DEFAULT_SORT_FIELD = 'publishedAt';
+
+const LIST_FIELDS = [
+  'title', 'short_headline', 'slug', 'excerpt', 'publishedAt', 'createdAt', 'updatedAt',
+  'readTime', 'isFeatured', 'isBreaking', 'isEditorsPick', 'contentType', 'views', 'shares',
+  'focus_keyword', 'location', 'news_category', 'seoTitle', 'discoverEligible',
+  'canonicalUrl', 'newsKeywords', 'meta_description', 'videoUrl', 'videoType', 'videoTitle'
+];
 
 const resolveSortField = (orderBy: string | undefined) => {
   const sortKeyWhitelist = new Set(['publishedAt', 'createdAt', 'views', 'title', 'id']);
@@ -108,7 +116,7 @@ const parseDateToISO = (value: unknown): string | undefined => {
   return undefined;
 };
 
-const normalizeArticle = (entity: any, origin: string) => {
+const normalizeArticle = (entity: any, origin: string, options: { excludeContent?: boolean } = {}) => {
   if (!entity) return null;
   const featuredImageUrl =
     entity?.featured_image?.url || entity?.image?.url
@@ -173,7 +181,7 @@ const normalizeArticle = (entity: any, origin: string) => {
     short_headline: entity?.short_headline ? String(entity.short_headline) : '',
     slug: entity?.slug ? String(entity.slug) : '',
     excerpt: entity?.excerpt ? String(entity.excerpt) : '',
-    content: entity?.content ? String(entity.content) : '',
+    content: options.excludeContent ? '' : (entity?.content ? String(entity.content) : ''),
     image: featuredImageUrl || '/placeholder.svg',
     featured_image: featuredImageUrl || undefined,
     featured_image_id: entity?.featured_image?.id ? String(entity.featured_image.id) : undefined,
@@ -196,12 +204,16 @@ const normalizeArticle = (entity: any, origin: string) => {
         ? String((entity.author as any).role)
         : undefined,
     views: typeof entity?.views === 'number' ? entity.views : undefined,
+    shares: typeof (entity as any)?.shares === 'number' ? (entity as any).shares : undefined,
     status,
     tags: tags.length > 0 ? tags : undefined,
     categories: categories.length > 0 ? categories : undefined,
     focus_keyword: entity?.focus_keyword ? String(entity.focus_keyword) : undefined,
     location: entity?.location ? String(entity.location) : undefined,
     news_category: entity?.news_category ? String(entity.news_category) : undefined,
+    metaTitle: entity?.seoTitle ? String(entity.seoTitle) : entity?.title ? String(entity.title) : undefined,
+    metaDescription: entity?.meta_description ? String(entity.meta_description) : undefined,
+    ogImage: featuredImageUrl || undefined,
     seoTitle: entity?.seoTitle ? String(entity.seoTitle) : undefined,
     discoverEligible: typeof entity?.discoverEligible === 'boolean' ? entity.discoverEligible : undefined,
     canonicalUrl: entity?.canonicalUrl ? String(entity.canonicalUrl) : undefined,
@@ -211,6 +223,7 @@ const normalizeArticle = (entity: any, origin: string) => {
     videoUrl: entity?.videoUrl ? String(entity.videoUrl) : undefined,
     videoType: entity?.videoType ? String(entity.videoType) : undefined,
     videoTitle: entity?.videoTitle ? String(entity.videoTitle) : undefined,
+    jsonLd: structuredData,
     structuredData,
   };
 };
@@ -684,10 +697,11 @@ export default factories.createCoreController('api::article.article', ({ strapi 
         },
         sort: [{ [DEFAULT_SORT_FIELD]: 'desc' }],
         populate: articlePopulate,
+        fields: LIST_FIELDS,
         limit,
         publicationState: 'live',
       });
-      return (entities as any[]).map((e) => normalizeArticle(e, origin));
+      return (entities as any[]).map((e) => normalizeArticle(e, origin, { excludeContent: true }));
     },
 
     async breaking(ctx) {
@@ -702,10 +716,11 @@ export default factories.createCoreController('api::article.article', ({ strapi 
         },
         sort: [{ [DEFAULT_SORT_FIELD]: 'desc' }],
         populate: articlePopulate,
+        fields: LIST_FIELDS,
         limit,
         publicationState: 'live',
       });
-      return (entities as any[]).map((e) => normalizeArticle(e, origin));
+      return (entities as any[]).map((e) => normalizeArticle(e, origin, { excludeContent: true }));
     },
 
     async hero(ctx) {
@@ -725,6 +740,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
           },
           sort: [{ [DEFAULT_SORT_FIELD]: 'desc' }],
           populate: articlePopulate,
+          fields: LIST_FIELDS,
           limit: featuredLimit,
           publicationState: 'live',
         }),
@@ -735,6 +751,7 @@ export default factories.createCoreController('api::article.article', ({ strapi 
           },
           sort: [{ [DEFAULT_SORT_FIELD]: 'desc' }],
           populate: articlePopulate,
+          fields: LIST_FIELDS,
           limit: limit * 2,
           publicationState: 'live',
         }),
@@ -753,12 +770,13 @@ export default factories.createCoreController('api::article.article', ({ strapi 
           filters: {},
           sort: [{ [DEFAULT_SORT_FIELD]: 'desc' }],
           populate: articlePopulate,
+          fields: LIST_FIELDS,
           limit,
           publicationState: 'live',
         });
       }
 
-      return (combined as any[]).map((e) => normalizeArticle(e, origin));
+      return (combined as any[]).map((e) => normalizeArticle(e, origin, { excludeContent: true }));
     },
 
     async newsSitemap(ctx) {
@@ -894,15 +912,9 @@ Sitemap: ${origin}/news-sitemap.xml
 
     async trending(ctx) {
       const limit = parseLimit(ctx.query.limit, 10);
-      const origin = ctx.request.origin || '';
-      const entities = await es.findMany('api::article.article', {
-        filters: {},
-        sort: [{ views: 'desc' }],
-        populate: articlePopulate,
-        limit,
-        publicationState: 'live',
-      });
-      return (entities as any[]).map((e) => normalizeArticle(e, origin));
+      const origin = getPublicOrigin(ctx);
+      const entities = await trendingService.getTrendingEntities(strapi, { limit });
+      return (entities as any[]).map((e) => normalizeArticle(e, origin, { excludeContent: true }));
     },
 
     async byCategory(ctx) {
@@ -927,6 +939,7 @@ Sitemap: ${origin}/news-sitemap.xml
           filters,
           sort: [{ [DEFAULT_SORT_FIELD]: 'desc' }],
           populate: articlePopulate,
+          fields: LIST_FIELDS,
           start: offset,
           limit,
           publicationState: 'live',
@@ -939,7 +952,7 @@ Sitemap: ${origin}/news-sitemap.xml
       const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
 
       return {
-        data: (entities as any[]).map((e) => normalizeArticle(e, origin)),
+        data: (entities as any[]).map((e) => normalizeArticle(e, origin, { excludeContent: true })),
         total,
         page,
         pageSize,
@@ -975,6 +988,7 @@ Sitemap: ${origin}/news-sitemap.xml
           filters,
           sort: [{ [DEFAULT_SORT_FIELD]: 'desc' }],
           populate: articlePopulate,
+          fields: LIST_FIELDS,
           start: offset,
           limit,
           publicationState: 'live',
@@ -987,7 +1001,7 @@ Sitemap: ${origin}/news-sitemap.xml
       const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
 
       return {
-        data: (entities as any[]).map((e) => normalizeArticle(e, origin)),
+        data: (entities as any[]).map((e) => normalizeArticle(e, origin, { excludeContent: true })),
         total,
         page,
         pageSize,
@@ -1009,6 +1023,7 @@ Sitemap: ${origin}/news-sitemap.xml
           filters,
           sort,
           populate: articlePopulate,
+          fields: LIST_FIELDS,
           start,
           limit,
           publicationState,
@@ -1021,7 +1036,7 @@ Sitemap: ${origin}/news-sitemap.xml
       const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
 
       return {
-        data: (entities as any[]).map((e) => normalizeArticle(e, origin)),
+        data: (entities as any[]).map((e) => normalizeArticle(e, origin, { excludeContent: true })),
         total,
         page,
         pageSize,
@@ -1092,6 +1107,7 @@ Sitemap: ${origin}/news-sitemap.xml
           filters,
           sort: sortArray,
           populate: articlePopulate,
+          fields: LIST_FIELDS,
           publicationState: 'preview',
           start: offset,
           limit,
@@ -1104,7 +1120,7 @@ Sitemap: ${origin}/news-sitemap.xml
       const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
 
       return {
-        data: (entities as any[]).map((e) => normalizeArticle(e, origin)),
+        data: (entities as any[]).map((e) => normalizeArticle(e, origin, { excludeContent: true })),
         total,
         page,
         pageSize,

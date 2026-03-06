@@ -4,7 +4,8 @@ export default ({ env }) => ({
       sizeLimit: env.int('UPLOAD_SIZE_LIMIT', 50 * 1024 * 1024),
       responsiveDimensions: true,
       breakpoints: {
-        xlarge: 1920,
+        xxlarge: 2000,
+        xlarge: 1600,
         large: 1200,
         medium: 800,
         small: 500,

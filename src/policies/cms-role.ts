@@ -1,4 +1,5 @@
 export default async (policyContext: any) => {
+  if (policyContext?.state?.admin) return true;
   let user = policyContext?.state?.user;
   if (!user) {
     const auth =
@@ -34,7 +35,11 @@ export default async (policyContext: any) => {
   const normalized = (type || name || '').trim().toLowerCase();
   if (!normalized) return false;
 
-  const allowed = new Set(['admin', 'editor', 'author', 'contributor']);
-  return allowed.has(normalized);
+  const allowed = new Set(['admin', 'editor', 'author', 'contributor', 'reporter', 'authenticated']);
+  const isAllowed = allowed.has(normalized);
+  if (!isAllowed) {
+    strapi.log.warn(`Policy blocked user ${user.id} with role ${normalized}`);
+  }
+  return isAllowed;
 };
 

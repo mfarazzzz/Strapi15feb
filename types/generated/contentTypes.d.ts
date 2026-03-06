@@ -529,6 +529,7 @@ export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 70;
       }>;
+    shares: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     short_headline: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMaxLength<{
@@ -1081,6 +1082,43 @@ export interface ApiInstitutionInstitution extends Struct.CollectionTypeSchema {
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     website: Schema.Attribute.String;
+  };
+}
+
+export interface ApiInternalLinkInternalLink
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'internal_links';
+  info: {
+    displayName: 'Internal Link';
+    pluralName: 'internal-links';
+    singularName: 'internal-link';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    enabled: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    keyword: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 120;
+      }>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::internal-link.internal-link'
+    > &
+      Schema.Attribute.Private;
+    priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    url: Schema.Attribute.String & Schema.Attribute.Required;
   };
 }
 
@@ -2005,6 +2043,7 @@ declare module '@strapi/strapi' {
       'api::exam.exam': ApiExamExam;
       'api::holiday.holiday': ApiHolidayHoliday;
       'api::institution.institution': ApiInstitutionInstitution;
+      'api::internal-link.internal-link': ApiInternalLinkInternalLink;
       'api::mediaitem.mediaitem': ApiMediaitemMediaitem;
       'api::microsite-item.microsite-item': ApiMicrositeItemMicrositeItem;
       'api::page.page': ApiPagePage;

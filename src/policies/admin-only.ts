@@ -1,4 +1,5 @@
 export default async (policyContext: any) => {
+  if (policyContext?.state?.admin) return true;
   let user = policyContext?.state?.user;
   if (!user) {
     const auth =

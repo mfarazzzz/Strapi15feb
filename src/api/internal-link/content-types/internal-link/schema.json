@@ -1,0 +1,39 @@
+{
+  "kind": "collectionType",
+  "collectionName": "internal_links",
+  "info": {
+    "singularName": "internal-link",
+    "pluralName": "internal-links",
+    "displayName": "Internal Link"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "indexes": [
+    {
+      "name": "internal_links_keyword_idx",
+      "columns": ["keyword"]
+    }
+  ],
+  "attributes": {
+    "keyword": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "maxLength": 120
+    },
+    "url": {
+      "type": "string",
+      "required": true
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "priority": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+}
+
