@@ -222,8 +222,56 @@ export default {
         .insert(missing.map((permissionId) => ({ role_id: roleId, permission_id: permissionId, permission_ord: 1 })));
     };
 
+    const ensureAdminUsersAreSuperAdmins = async (emails: string[]) => {
+      const role = await strapi.db.query('admin::role').findOne({ where: { code: 'strapi-super-admin' } });
+      const superRoleId = toNumber(role?.id);
+      if (!superRoleId) return;
+
+      for (const email of emails) {
+        const normalizedEmail = String(email || '').trim().toLowerCase();
+        if (!normalizedEmail) continue;
+
+        const user = await strapi.db.query('admin::user').findOne({ where: { email: normalizedEmail } });
+        const userId = toNumber(user?.id);
+        if (!userId) continue;
+
+        const existing = await strapi.db
+          .connection('admin_users_roles_lnk')
+          .select(['role_id'])
+          .where({ user_id: userId });
+        const existingRoleIds = new Set((existing as any[]).map((r) => toNumber(r?.role_id)).filter((n) => n > 0));
+        if (existingRoleIds.size === 1 && existingRoleIds.has(superRoleId)) continue;
+
+        await strapi.db.connection('admin_users_roles_lnk').where({ user_id: userId }).del();
+        await strapi.db.connection('admin_users_roles_lnk').insert({
+          user_id: userId,
+          role_id: superRoleId,
+          role_ord: 1,
+          user_ord: 1,
+        });
+      }
+    };
+
     try {
       await ensureAdminRoleHasAllPermissions('strapi-super-admin');
+    } catch {
+      void 0;
+    }
+
+    try {
+      const raw =
+        String(process.env.ADMIN_PANEL_SUPER_ADMIN_EMAILS ?? process.env.ADMIN_PANEL_SUPER_ADMIN_EMAIL ?? '')
+          .trim()
+          .toLowerCase();
+      const emails = raw
+        ? raw
+            .split(',')
+            .map((v) => v.trim())
+            .filter(Boolean)
+        : [];
+      if (emails.length > 0) {
+        await ensureAdminUsersAreSuperAdmins(emails);
+      }
     } catch {
       void 0;
     }
