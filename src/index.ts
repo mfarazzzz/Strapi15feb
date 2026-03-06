@@ -199,6 +199,35 @@ export default {
       }
     }
 
+    const ensureAdminRoleHasAllPermissions = async (roleCode: string) => {
+      const role = await strapi.db.query('admin::role').findOne({ where: { code: roleCode } });
+      const roleId = toNumber(role?.id);
+      if (!roleId) return;
+
+      const permissionRows = (await strapi.db.connection('admin_permissions').select(['id'])) as any[];
+      const permissionIds = permissionRows.map((r) => toNumber(r?.id)).filter((n) => n > 0);
+      if (permissionIds.length === 0) return;
+
+      const existingRows = (await strapi.db
+        .connection('admin_permissions_role_lnk')
+        .select(['permission_id'])
+        .where({ role_id: roleId })) as any[];
+      const existing = new Set(existingRows.map((r) => toNumber(r?.permission_id)).filter((n) => n > 0));
+
+      const missing = permissionIds.filter((id) => !existing.has(id));
+      if (missing.length === 0) return;
+
+      await strapi.db
+        .connection('admin_permissions_role_lnk')
+        .insert(missing.map((permissionId) => ({ role_id: roleId, permission_id: permissionId, permission_ord: 1 })));
+    };
+
+    try {
+      await ensureAdminRoleHasAllPermissions('strapi-super-admin');
+    } catch {
+      void 0;
+    }
+
     const bootstrapEmail = process.env.BOOTSTRAP_ADMIN_EMAIL;
     const bootstrapPassword = process.env.BOOTSTRAP_ADMIN_PASSWORD;
     if (bootstrapEmail && bootstrapPassword) {
