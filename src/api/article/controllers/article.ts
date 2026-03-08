@@ -1102,13 +1102,16 @@ Sitemap: ${origin}/news-sitemap.xml
       const sortField = sortFieldRaw === 'publishedDate' ? 'publishedAt' : sortFieldRaw;
       const sortArray = [{ [sortField]: order }];
 
+      // IMPORTANT: Ensure we fetch draft AND published content for Admin Dashboard
+      // Strapi v5 Entity Service defaults to publicationState: 'live' if not specified
+      // We must explicitly set 'preview' to see everything.
       const [entities, total] = await Promise.all([
         es.findMany('api::article.article', {
           filters,
           sort: sortArray,
           populate: articlePopulate,
           fields: LIST_FIELDS,
-          publicationState: 'preview',
+          publicationState: 'preview', 
           start: offset,
           limit,
         }),
@@ -1289,20 +1292,44 @@ Sitemap: ${origin}/news-sitemap.xml
       const origin = getPublicOrigin(ctx);
       const current = await es.findOne('api::article.article', id, {
         publicationState: 'preview',
-        fields: ['id', 'documentId'],
+        fields: ['id', 'documentId', 'publishedAt'],
       });
+      
+      if (!current) {
+        ctx.notFound('Article not found');
+        return;
+      }
+
+      // If already published, just return it
+      if (current.publishedAt) {
+        const entity = await es.findOne('api::article.article', id, {
+          populate: articlePopulate,
+          publicationState: 'live',
+        });
+        return normalizeArticle(entity, origin);
+      }
+
       const documentId = parseString((current as any)?.documentId) || id;
       const docsFactory = (strapi as any).documents;
       const docs = typeof docsFactory === 'function' ? docsFactory.call(strapi, 'api::article.article') : null;
-      if (docs && typeof docs.publish === 'function') {
-        await docs.publish({ documentId });
-      } else {
-        await es.update('api::article.article', id, { data: { publishedAt: new Date().toISOString() } });
+      
+      try {
+        if (docs && typeof docs.publish === 'function') {
+          await docs.publish({ documentId });
+        } else {
+          // Fallback for non-Documents service (standard Entity Service)
+          await es.update('api::article.article', id, { data: { publishedAt: new Date().toISOString() } });
+        }
+      } catch (error) {
+        strapi.log.error('Publish failed:', error);
+        throw error;
       }
+
       const entity = await es.findOne('api::article.article', id, {
         populate: articlePopulate,
-        publicationState: 'preview',
+        publicationState: 'live', // Ensure we fetch the live version
       });
+      
       return normalizeArticle(entity, origin);
     },
 
