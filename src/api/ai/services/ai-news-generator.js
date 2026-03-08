@@ -1,188 +1,310 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-/**
- * Utility to convert string to URL-friendly slug
- * Rules: lowercase, spaces -> hyphen, remove special characters
- */
+/*
+Utility: Convert text into URL friendly slug
+*/
 const slugify = (text) => {
   if (!text) return "";
-  
   return text
     .toString()
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, "-")           // Replace spaces with -
-    .replace(/[^\w\-]+/g, "")       // Remove all non-word chars
-    .replace(/\-\-+/g, "-")         // Replace multiple - with single -
-    .replace(/^-+/, "")             // Trim - from start of text
-    .replace(/-+$/, "");            // Trim - from end of text
+    .replace(/\s+/g, "-")
+    .replace(/[^\w\-]+/g, "")
+    .replace(/\-\-+/g, "-")
+    .replace(/^-+/, "")
+    .replace(/-+$/, "");
 };
 
-/**
- * AI News Generator Service
- * Integrates with Google Gemini to generate news articles and metadata.
- */
-
 module.exports = ({ strapi }) => ({
-  async generateNewsArticle(draft, retry = true) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY is not defined in environment variables.");
-    }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+/*
+MAIN AI NEWS GENERATOR
+Creates full newsroom package from a draft
+*/
+async generateNewsPackage(draft) {
 
-    const prompt = `
-      You are an expert Hindi news editor. Based on the following draft news report, generate a complete, SEO-optimized news article in formal Hindi.
-      
-      DRAFT: "${draft}"
-      
-      REQUIREMENTS:
-      1. Language: Formal Hindi (Standard News Style).
-      2. Content Length: 600–900 words.
-      3. Style: Professional, objective, and engaging.
-      4. SEO: Optimized for Google News and Google Discover.
-      5. Output Format: STRICT VALID JSON ONLY. No markdown blocks, no extra text.
-      
-      FIELDS TO GENERATE IN JSON:
-      - title: A compelling Hindi headline.
-      - slug: English lowercase hyphen-separated slug based on the title.
-      - excerpt: A 2-3 sentence summary of the news in Hindi.
-      - content: The full news article in HTML format (using <p>, <h2>, <ul>, <li> tags).
-      - category: Primary category name (e.g., Politics, Crime, Sports, Entertainment, Local).
-      - news_category: Hindi translation of the category.
-      - author: A professional Hindi name or "Rampur News Desk".
-      - tags: Array of 5-8 relevant Hindi keywords.
-      - is_breaking: Boolean (true if the news is urgent/breaking).
-      - is_featured: Boolean (true if it's a major story).
-      - seo_title: Hindi SEO title (max 60 chars).
-      - meta_description: Hindi meta description (max 155 chars).
-      - focus_keyword: The main Hindi keyword for this news.
-      - news_keywords: Comma-separated Hindi keywords for news meta tags.
-      - canonical_url: Use "/" followed by the English slug.
-      - discover_eligible: Boolean (true if content is high quality and engaging).
-      - short_headline: Hindi headline for mobile/Discover (max 110 chars).
-      - read_time: Estimated read time in minutes (integer).
-      - location: Primary location of the news (e.g., रामपुर, उत्तर प्रदेश).
-      - schema_json: A valid JSON object for Schema.org NewsArticle (as a string or object).
-      - image_alt_text: Descriptive Hindi alt text for the main image.
+try {
 
-      IMPORTANT: Ensure the JSON is perfectly formatted. If the draft is too short, expand it with relevant context and background information while maintaining factual accuracy.
-    `;
+const apiKey = process.env.GEMINI_API_KEY;
 
-    try {
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      let text = response.text();
+if (!apiKey) {
+throw new Error("GEMINI_API_KEY missing in environment variables");
+}
 
-      // Clean up potential markdown formatting if Gemini includes it
-      text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+const genAI = new GoogleGenerativeAI(apiKey);
 
-      let articleData;
-      try {
-        articleData = JSON.parse(text);
-      } catch (parseError) {
-        strapi.log.error("Failed to parse Gemini JSON response. Retrying...");
-        if (retry) {
-          return this.generateNewsArticle(draft, false);
-        }
-        throw new Error("Invalid JSON response from AI model.");
-      }
+/*
+Latest fast production model
+*/
+const model = genAI.getGenerativeModel({
+model: "gemini-2.5-flash",
+generationConfig: {
+temperature: 0.7,
+topP: 0.9,
+maxOutputTokens: 4096
+}
+});
 
-      // Final validation and processing
-      articleData.slug = slugify(articleData.title);
-      
-      // Log successful generation
-      strapi.log.info(`AI Article Generated: ${articleData.title}`);
-      
-      return articleData;
-    } catch (error) {
-      strapi.log.error(`AI Generation Error: ${error.message}`);
-      throw error;
-    }
-  },
+/*
+AI Prompt
+*/
+const prompt = `
+You are a senior Hindi news editor working for a digital news organization.
 
-  async generateSummary(content) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+Using the draft below, generate a COMPLETE newsroom publishing package.
 
-    const prompt = `
-      Based on the following news content, generate a short summary and social media captions in Hindi.
-      
-      CONTENT: "${content}"
-      
-      RETURN JSON ONLY:
-      {
-        "summary": "2 line concise summary",
-        "social_caption": "Engaging caption with emojis for Facebook/Instagram",
-        "whatsapp_caption": "Informative caption for WhatsApp groups"
-      }
-    `;
+DRAFT:
+"${draft}"
 
-    try {
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      let text = response.text();
-      text = text.replace(/```json/g, "").replace(/```/g, "").trim();
-      return JSON.parse(text);
-    } catch (error) {
-      strapi.log.error(`AI Summary Error: ${error.message}`);
-      return null;
-    }
-  },
+Rules:
+- Write in professional Hindi news style
+- Article length: 600–900 words
+- Optimized for Google News & Google Discover
+- Use HTML formatting (<p>, <h2>, <ul>, <li>)
+- Avoid speculation
+- Maintain journalistic tone
 
-  async generateSummaryLegacy(content) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+Return STRICT JSON ONLY.
 
-    const prompt = `
-      Based on the following news content, generate a short summary and social media captions in Hindi.
-      
-      CONTENT: "${content}"
-      
-      RETURN JSON ONLY:
-      {
-        "summary": "2 line concise summary",
-        "social_caption": "Engaging caption with emojis for Facebook/Instagram",
-        "whatsapp_caption": "Informative caption for WhatsApp groups"
-      }
-    `;
+JSON STRUCTURE:
 
-    try {
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      let text = response.text();
-      text = text.replace(/```json/g, "").replace(/```/g, "").trim();
-      return JSON.parse(text);
-    } catch (error) {
-      strapi.log.error(`AI Summary Error: ${error.message}`);
-      return null;
-    }
-  },
+{
+"title":"",
+"slug":"",
+"short_headline":"",
+"excerpt":"",
+"content_html":"",
+"category":"",
+"news_category":"",
+"author":"",
+"location":"",
+"tags":[],
+"is_breaking":false,
+"is_featured":false,
 
-  async generateDiscoverHeadline(content) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+"seo":{
+"seo_title":"",
+"meta_description":"",
+"focus_keyword":"",
+"news_keywords":""
+},
 
-    const prompt = `
-      Create one emotional and curiosity-driven Hindi headline for Google Discover from this news:
-      
-      CONTENT: "${content}"
-      
-      Return the headline as a plain string. Max 110 characters.
-    `;
+"discover":{
+"discover_headline":"",
+"discover_eligible":true
+},
 
-    try {
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      return response.text().trim();
-    } catch (error) {
-      strapi.log.error(`AI Discover Headline Error: ${error.message}`);
-      return null;
-    }
-  }
+"social":{
+"facebook_caption":"",
+"twitter_caption":"",
+"whatsapp_caption":""
+},
+
+"schema_json":"",
+"image_alt_text":"",
+"read_time":0
+}
+`;
+
+const result = await model.generateContent(prompt);
+
+const response = await result.response;
+
+let text = response.text();
+
+/*
+Remove markdown formatting
+*/
+text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+/*
+Extract JSON safely
+*/
+const jsonMatch = text.match(/\{[\s\S]*\}/);
+
+if (!jsonMatch) {
+throw new Error("AI response did not return valid JSON");
+}
+
+let articleData;
+
+try {
+articleData = JSON.parse(jsonMatch[0]);
+} catch (err) {
+strapi.log.error("JSON parse error:", jsonMatch[0]);
+throw new Error("Invalid JSON from AI");
+}
+
+/*
+Ensure slug exists
+*/
+articleData.slug = slugify(articleData.title || "news-article");
+
+/*
+Ensure read time
+*/
+if (!articleData.read_time) {
+
+const wordCount = articleData.content_html
+.replace(/<[^>]*>/g, "")
+.split(/\s+/).length;
+
+articleData.read_time = Math.max(1, Math.round(wordCount / 200));
+
+}
+
+/*
+Log success
+*/
+strapi.log.info(`AI Article Generated: ${articleData.title}`);
+
+return articleData;
+
+} catch (error) {
+
+strapi.log.error("AI Generation Error:", error);
+
+/*
+Fail-safe return so CMS never crashes
+*/
+return {
+
+title: "AI Generation Failed",
+slug: "ai-generation-failed",
+short_headline: "",
+excerpt: "",
+content_html: "<p>AI content generation failed. Please retry.</p>",
+category: "",
+news_category: "",
+author: "Rampur News Desk",
+location: "",
+tags: [],
+is_breaking: false,
+is_featured: false,
+
+seo: {
+seo_title: "",
+meta_description: "",
+focus_keyword: "",
+news_keywords: ""
+},
+
+discover: {
+discover_headline: "",
+discover_eligible: false
+},
+
+social: {
+facebook_caption: "",
+twitter_caption: "",
+whatsapp_caption: ""
+},
+
+schema_json: "",
+image_alt_text: "",
+read_time: 1
+
+};
+
+}
+
+},
+
+/*
+SUMMARY GENERATOR
+Creates social captions
+*/
+async generateSummary(content) {
+
+try {
+
+const apiKey = process.env.GEMINI_API_KEY;
+
+const genAI = new GoogleGenerativeAI(apiKey);
+
+const model = genAI.getGenerativeModel({
+model: "gemini-2.5-flash"
+});
+
+const prompt = `
+Based on the following news article create summary and captions.
+
+CONTENT:
+"${content}"
+
+Return JSON only:
+
+{
+"summary":"",
+"facebook_caption":"",
+"twitter_caption":"",
+"whatsapp_caption":""
+}
+`;
+
+const result = await model.generateContent(prompt);
+
+const response = await result.response;
+
+let text = response.text();
+
+text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+const jsonMatch = text.match(/\{[\s\S]*\}/);
+
+if (!jsonMatch) return null;
+
+return JSON.parse(jsonMatch[0]);
+
+} catch (error) {
+
+strapi.log.error("Summary generation failed:", error);
+
+return null;
+
+}
+
+},
+
+/*
+DISCOVER HEADLINE GENERATOR
+*/
+async generateDiscoverHeadline(content) {
+
+try {
+
+const apiKey = process.env.GEMINI_API_KEY;
+
+const genAI = new GoogleGenerativeAI(apiKey);
+
+const model = genAI.getGenerativeModel({
+model: "gemini-2.5-flash"
+});
+
+const prompt = `
+Create a curiosity driven Hindi headline for Google Discover.
+
+Max length: 110 characters.
+
+CONTENT:
+"${content}"
+`;
+
+const result = await model.generateContent(prompt);
+
+const response = await result.response;
+
+return response.text().trim();
+
+} catch (error) {
+
+strapi.log.error("Discover headline error:", error);
+
+return null;
+
+}
+
+}
+
 });

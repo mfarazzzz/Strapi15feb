@@ -1194,14 +1194,55 @@ Sitemap: ${origin}/news-sitemap.xml
       const origin = getPublicOrigin(ctx);
       const input = extractData(ctx.request.body);
       try {
-        const data = await buildStrapiArticleData(input, origin, false);
+        const explicitId = parseNumber((input as any)?.id);
+        const explicitDocumentId = parseString((input as any)?.documentId);
+        const requestedSlugRaw = parseString((input as any)?.slug) || parseString((input as any)?.title) || '';
+        const requestedSlug = requestedSlugRaw ? normalizeSlugValue(requestedSlugRaw) : '';
+
+        let existingEntity: any = null;
+
+        if (explicitId) {
+          existingEntity = await es.findOne('api::article.article', explicitId, {
+            populate: articlePopulate,
+            publicationState: 'preview',
+          });
+        } else if (explicitDocumentId) {
+          const foundByDocument = await es.findMany('api::article.article', {
+            filters: { documentId: explicitDocumentId },
+            publicationState: 'preview',
+            populate: articlePopulate,
+            sort: [{ updatedAt: 'desc' }],
+            limit: 1,
+          });
+          existingEntity = Array.isArray(foundByDocument) ? foundByDocument[0] : null;
+        } else if (requestedSlug) {
+          const foundBySlug = await es.findMany('api::article.article', {
+            filters: { slug: requestedSlug },
+            publicationState: 'preview',
+            populate: articlePopulate,
+            sort: [{ updatedAt: 'desc' }],
+            limit: 1,
+          });
+          existingEntity = Array.isArray(foundBySlug) ? foundBySlug[0] : null;
+        }
+
+        const isUpsert = Boolean(existingEntity?.id);
+        const data = await buildStrapiArticleData(input, origin, isUpsert);
+        if (typeof data.slug === 'string' && data.slug.trim()) {
+          data.slug = await ensureUniqueSlug(data.slug, isUpsert ? Number(existingEntity.id) : undefined);
+        }
         await validateFeaturedImageWidth(
           typeof data.featured_image === 'number' ? data.featured_image : undefined,
         );
-        const entity = await es.create('api::article.article', {
-          data,
-          populate: articlePopulate,
-        });
+        const entity = isUpsert
+          ? await es.update('api::article.article', existingEntity.id, {
+              data,
+              populate: articlePopulate,
+            })
+          : await es.create('api::article.article', {
+              data,
+              populate: articlePopulate,
+            });
         return normalizeArticle(entity, origin);
       } catch (error: any) {
         if (error?.message === 'CATEGORY_REQUIRED') {
@@ -1246,7 +1287,11 @@ Sitemap: ${origin}/news-sitemap.xml
       }
 
       const origin = getPublicOrigin(ctx);
-      const documentId = Number.isFinite(Number(id)) ? Number(id) : id;
+      const current = await es.findOne('api::article.article', id, {
+        publicationState: 'preview',
+        fields: ['id', 'documentId'],
+      });
+      const documentId = parseString((current as any)?.documentId) || id;
       const docsFactory = (strapi as any).documents;
       const docs = typeof docsFactory === 'function' ? docsFactory.call(strapi, 'api::article.article') : null;
       if (docs && typeof docs.publish === 'function') {
@@ -1269,7 +1314,11 @@ Sitemap: ${origin}/news-sitemap.xml
       }
 
       const origin = getPublicOrigin(ctx);
-      const documentId = Number.isFinite(Number(id)) ? Number(id) : id;
+      const current = await es.findOne('api::article.article', id, {
+        publicationState: 'preview',
+        fields: ['id', 'documentId'],
+      });
+      const documentId = parseString((current as any)?.documentId) || id;
       const docsFactory = (strapi as any).documents;
       const docs = typeof docsFactory === 'function' ? docsFactory.call(strapi, 'api::article.article') : null;
       if (docs && typeof docs.unpublish === 'function') {
