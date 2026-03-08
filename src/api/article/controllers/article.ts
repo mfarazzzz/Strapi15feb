@@ -842,7 +842,8 @@ ${urls.join('')}
         es.findMany('api::article.article', {
           filters: { },
           sort: [{ publishedAt: 'desc' }],
-          limit: 5000,
+          // Increase sitemap limit to 10,000 to cover more old articles
+          limit: 10000,
           populate: { category: true },
           publicationState: 'live',
         }),
@@ -918,7 +919,8 @@ Sitemap: ${origin}/news-sitemap.xml
     },
 
     async byCategory(ctx) {
-      const limit = parseLimit(ctx.query.limit, 25);
+      // Default to 100 items if limit not specified
+      const limit = parseLimit(ctx.query.limit, 100);
       const offset = parseNumber(ctx.query.offset) ?? 0;
       const categorySlug = parseString(ctx.params.slug);
       if (!categorySlug) {
@@ -1014,7 +1016,8 @@ Sitemap: ${origin}/news-sitemap.xml
       const q: any = await (this as any).sanitizeQuery(ctx);
       const filters: Record<string, any> = q.filters ? JSON.parse(JSON.stringify(q.filters)) : {};
       const start = typeof q.start === 'number' ? q.start : 0;
-      const limit = typeof q.limit === 'number' ? Math.min(q.limit, MAX_LIMIT) : 25;
+      // Increase default limit from 25 to 100
+      const limit = typeof q.limit === 'number' ? Math.min(q.limit, MAX_LIMIT) : 100;
       const sort = q.sort && Array.isArray(q.sort) && q.sort.length > 0 ? q.sort : [{ publishedAt: 'desc' }];
       const publicationState = q.publicationState || 'live';
 
