@@ -59,7 +59,7 @@ const formatIso = (value?: string) => {
 const slugify = (value: string) =>
   value
     .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
+    .replace(/[^a-z0-9\u0900-\u097f\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .trim()
