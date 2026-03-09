@@ -928,19 +928,57 @@ Sitemap: ${origin}/news-sitemap.xml
     },
 
     async byCategory(ctx) {
-      // Set caching headers for CDN
-      ctx.set('Cache-Control', 'public, max-age=60');
-      
-      // Default to 100 items if limit not specified
-      const limit = parseLimit(ctx.query.limit, 100);
-      const offset = parseNumber(ctx.query.offset) ?? 0;
-      const categorySlug = parseString(ctx.params.slug);
-      if (!categorySlug) {
-        ctx.badRequest('Category slug is required');
-        return;
-      }
-      const origin = ctx.request.origin || '';
+  ctx.set('Cache-Control', 'public, max-age=60');
 
+  const limit = parseLimit(ctx.query.limit, 100);
+  const offset = parseNumber(ctx.query.offset) ?? 0;
+  const categorySlug = parseString(ctx.params.slug);
+
+  if (!categorySlug) {
+    ctx.badRequest('Category slug is required');
+    return;
+  }
+
+  const origin = ctx.request.origin || '';
+
+  const filters = {
+    category: {
+      slug: {
+        $eq: categorySlug,
+      },
+    },
+    publishedAt: {
+      $notNull: true,
+    },
+  };
+
+  const [entities, total] = await Promise.all([
+    es.findMany('api::article.article', {
+      filters,
+      sort: [{ publishedAt: 'desc' }],
+      populate: articlePopulate,
+      fields: LIST_FIELDS,
+      start: offset,
+      limit,
+      publicationState: 'live',
+    }),
+    es.count('api::article.article', { filters, publicationState: 'live' }),
+  ]);
+
+  const pageSize = limit;
+  const page = Math.floor(offset / pageSize) + 1;
+  const totalPages = Math.ceil(total / pageSize);
+
+  return {
+    data: (entities as any[]).map((e) =>
+      normalizeArticle(e, origin, { excludeContent: true })
+    ),
+    total,
+    page,
+    pageSize,
+    totalPages,
+  };
+}
       const filters = {
         $or: [
           { category: { slug: { $eq: categorySlug } } },
