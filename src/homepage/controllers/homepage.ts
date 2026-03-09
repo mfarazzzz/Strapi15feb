@@ -39,7 +39,8 @@ export default factories.createCoreController('api::homepage.homepage', ({ strap
           filters: {
             $or: [
               { category: { slug: 'editorials' } },
-              { categories: { slug: 'editorials' } }
+              { categories: { slug: 'editorials' } },
+              { category: { $eq: 'editorials' } }
             ]
           },
           sort: [{ publishedAt: 'desc' }],
@@ -53,7 +54,8 @@ export default factories.createCoreController('api::homepage.homepage', ({ strap
             filters: {
               $or: [
                 { category: { slug } },
-                { categories: { slug } }
+                { categories: { slug } },
+                { category: { $eq: slug } }
               ]
             },
             sort: [{ publishedAt: 'desc' }],

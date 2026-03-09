@@ -941,13 +941,12 @@ Sitemap: ${origin}/news-sitemap.xml
       }
       const origin = ctx.request.origin || '';
 
-      // Use $or to check BOTH category (singular) AND categories (plural) relations at once
       const filters = {
         $or: [
           { category: { slug: { $eq: categorySlug } } },
-          { categories: { slug: { $eq: categorySlug } } }
+          { categories: { slug: { $eq: categorySlug } } },
+          { category: { $eq: categorySlug } }
         ],
-        status: 'published'
       };
 
       const [entities, total] = await Promise.all([
