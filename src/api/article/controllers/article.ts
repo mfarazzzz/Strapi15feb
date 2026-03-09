@@ -941,17 +941,14 @@ Sitemap: ${origin}/news-sitemap.xml
       }
       const origin = ctx.request.origin || '';
 
-      // Fix: Strapi filtering for relations usually requires $eq or simply the value
-      // Trying simpler filter syntax that works across Strapi versions
+      // Use $or to check BOTH category (singular) AND categories (plural) relations at once
       const filters = {
-        category: {
-          slug: { $eq: categorySlug }
-        }
+        $or: [
+          { category: { slug: { $eq: categorySlug } } },
+          { categories: { slug: { $eq: categorySlug } } }
+        ],
+        status: 'published'
       };
-      
-      // Fallback: If 'categories' (plural) is used in your schema instead
-      // You might need to check your schema.json for 'article'.
-      // But let's try strict filtering first.
 
       const [entities, total] = await Promise.all([
         es.findMany('api::article.article', {
@@ -966,40 +963,6 @@ Sitemap: ${origin}/news-sitemap.xml
         es.count('api::article.article', { filters, publicationState: 'live' }),
       ]);
       
-      // If primary filter returns nothing, try the plural 'categories' relation just in case
-      if (total === 0) {
-         const altFilters = {
-            categories: {
-               slug: { $eq: categorySlug }
-            }
-         };
-         const [altEntities, altTotal] = await Promise.all([
-            es.findMany('api::article.article', {
-               filters: altFilters,
-               sort: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
-               populate: articlePopulate,
-               fields: LIST_FIELDS,
-               start: offset,
-               limit,
-               publicationState: 'live',
-            }),
-            es.count('api::article.article', { filters: altFilters, publicationState: 'live' }),
-         ]);
-         
-         if (altTotal > 0) {
-             const pageSize = limit;
-             const page = pageSize > 0 ? Math.floor(offset / pageSize) + 1 : 1;
-             const totalPages = pageSize > 0 ? Math.ceil(altTotal / pageSize) : 1;
-             return {
-                data: (altEntities as any[]).map((e) => normalizeArticle(e, origin, { excludeContent: true })),
-                total: altTotal,
-                page,
-                pageSize,
-                totalPages,
-             };
-         }
-      }
-
       const pageSize = limit;
       const page = pageSize > 0 ? Math.floor(offset / pageSize) + 1 : 1;
       const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;

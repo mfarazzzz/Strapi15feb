@@ -37,7 +37,10 @@ export default factories.createCoreController('api::homepage.homepage', ({ strap
         // Query 2: Editorial articles
         es.findMany('api::article.article', {
           filters: {
-            category: { slug: 'editorials' }
+            $or: [
+              { category: { slug: 'editorials' } },
+              { categories: { slug: 'editorials' } }
+            ]
           },
           sort: [{ publishedAt: 'desc' }],
           populate,
@@ -48,7 +51,10 @@ export default factories.createCoreController('api::homepage.homepage', ({ strap
         ...categories.map(slug => 
           es.findMany('api::article.article', {
             filters: {
-              category: { slug }
+              $or: [
+                { category: { slug } },
+                { categories: { slug } }
+              ]
             },
             sort: [{ publishedAt: 'desc' }],
             populate,
