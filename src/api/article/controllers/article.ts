@@ -689,6 +689,9 @@ export default factories.createCoreController('api::article.article', ({ strapi 
 
   return {
     async featured(ctx) {
+      // Set caching headers for CDN
+      ctx.set('Cache-Control', 'public, max-age=60');
+      
       const limit = parseLimit(ctx.query.limit, 10);
       const origin = ctx.request.origin || '';
       const entities = await es.findMany('api::article.article', {
@@ -705,6 +708,9 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     },
 
     async breaking(ctx) {
+      // Set caching headers for CDN
+      ctx.set('Cache-Control', 'public, max-age=60');
+      
       const limit = parseLimit(ctx.query.limit, 10);
       const origin = ctx.request.origin || '';
       const now = Date.now();
@@ -724,6 +730,9 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     },
 
     async hero(ctx) {
+      // Set caching headers for CDN
+      ctx.set('Cache-Control', 'public, max-age=60');
+      
       const totalLimit = parseLimit(ctx.query.limit, 15);
       const limit = Math.max(1, Math.min(totalLimit, MAX_LIMIT));
       const origin = ctx.request.origin || '';
@@ -919,6 +928,9 @@ Sitemap: ${origin}/news-sitemap.xml
     },
 
     async byCategory(ctx) {
+      // Set caching headers for CDN
+      ctx.set('Cache-Control', 'public, max-age=60');
+      
       // Default to 100 items if limit not specified
       const limit = parseLimit(ctx.query.limit, 100);
       const offset = parseNumber(ctx.query.offset) ?? 0;
@@ -1051,6 +1063,9 @@ Sitemap: ${origin}/news-sitemap.xml
     },
 
     async find(ctx) {
+      // Set caching headers for CDN
+      ctx.set('Cache-Control', 'public, max-age=60');
+      
       const origin = getPublicOrigin(ctx);
       const q: any = await (this as any).sanitizeQuery(ctx);
       const filters: Record<string, any> = q.filters ? JSON.parse(JSON.stringify(q.filters)) : {};

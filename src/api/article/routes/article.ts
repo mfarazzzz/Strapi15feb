@@ -52,7 +52,7 @@ export default {
       method: 'GET',
       path: '/articles/by-category/:slug',
       handler: 'article.byCategory',
-      config: { auth: false }
+      config: { auth: false, policies: ['global::public-defaults'] }
     },
     {
       method: 'GET',

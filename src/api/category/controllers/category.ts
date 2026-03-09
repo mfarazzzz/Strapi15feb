@@ -16,6 +16,9 @@ const normalizeCategory = (entity: any) => {
 
 export default factories.createCoreController('api::category.category', ({ strapi }) => ({
   async find(ctx) {
+    // Set caching headers for CDN
+    ctx.set('Cache-Control', 'public, max-age=60');
+    
     const entities = await strapi.entityService.findMany('api::category.category', {
       sort: { order: 'asc' },
       limit: 1000,
@@ -24,6 +27,9 @@ export default factories.createCoreController('api::category.category', ({ strap
   },
 
   async findOne(ctx) {
+    // Set caching headers for CDN
+    ctx.set('Cache-Control', 'public, max-age=60');
+    
     const id = ctx.params.id;
     const entity = await strapi.entityService.findOne('api::category.category', id);
     if (!entity) {
@@ -34,6 +40,9 @@ export default factories.createCoreController('api::category.category', ({ strap
   },
 
   async findBySlug(ctx) {
+    // Set caching headers for CDN
+    ctx.set('Cache-Control', 'public, max-age=60');
+    
     const slug = ctx.params.slug;
     const entities = await strapi.entityService.findMany('api::category.category', {
       filters: { slug },
