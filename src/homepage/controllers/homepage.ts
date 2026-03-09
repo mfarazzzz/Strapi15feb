@@ -1,6 +1,6 @@
 import { factories } from '@strapi/strapi';
 
-export default factories.createCoreController('api::homepage.homepage', ({ strapi }) => ({
+export default factories.createCoreController('api::homepage.homepage' as any, ({ strapi }) => ({
   async index(ctx) {
     // Set caching headers for CDN
     ctx.set('Cache-Control', 'public, max-age=60');
