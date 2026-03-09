@@ -928,69 +928,36 @@ Sitemap: ${origin}/news-sitemap.xml
     },
 
     async byCategory(ctx) {
-  ctx.set('Cache-Control', 'public, max-age=60');
+      ctx.set('Cache-Control', 'public, max-age=60');
 
-  const limit = parseLimit(ctx.query.limit, 100);
-  const offset = parseNumber(ctx.query.offset) ?? 0;
-  const categorySlug = parseString(ctx.params.slug);
+      const limit = parseLimit(ctx.query.limit, 100);
+      const offset = parseNumber(ctx.query.offset) ?? 0;
+      const categorySlug = parseString(ctx.params.slug);
 
-  if (!categorySlug) {
-    ctx.badRequest('Category slug is required');
-    return;
-  }
+      if (!categorySlug) {
+        ctx.badRequest('Category slug is required');
+        return;
+      }
 
-  const origin = ctx.request.origin || '';
+      const origin = ctx.request.origin || '';
 
-  const filters = {
-    category: {
-      slug: {
-        $eq: categorySlug,
-      },
-    },
-    publishedAt: {
-      $notNull: true,
-    },
-  };
-
-  const [entities, total] = await Promise.all([
-    es.findMany('api::article.article', {
-      filters,
-      sort: [{ publishedAt: 'desc' }],
-      populate: articlePopulate,
-      fields: LIST_FIELDS,
-      start: offset,
-      limit,
-      publicationState: 'live',
-    }),
-    es.count('api::article.article', { filters, publicationState: 'live' }),
-  ]);
-
-  const pageSize = limit;
-  const page = Math.floor(offset / pageSize) + 1;
-  const totalPages = Math.ceil(total / pageSize);
-
-  return {
-    data: (entities as any[]).map((e) =>
-      normalizeArticle(e, origin, { excludeContent: true })
-    ),
-    total,
-    page,
-    pageSize,
-    totalPages,
-  };
-}
       const filters = {
-        $or: [
-          { category: { slug: { $eq: categorySlug } } },
-          { categories: { slug: { $eq: categorySlug } } },
-          { category: { $eq: categorySlug } }
+        $and: [
+          {
+            $or: [
+              { category: { slug: { $eq: categorySlug } } },
+              { categories: { slug: { $eq: categorySlug } } },
+              { category: { $eq: categorySlug } },
+            ],
+          },
+          { publishedAt: { $notNull: true } },
         ],
       };
 
       const [entities, total] = await Promise.all([
         es.findMany('api::article.article', {
           filters,
-          sort: [{ publishedAt: 'desc' }, { createdAt: 'desc' }], // Ensure latest first
+          sort: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
           populate: articlePopulate,
           fields: LIST_FIELDS,
           start: offset,
@@ -999,7 +966,7 @@ Sitemap: ${origin}/news-sitemap.xml
         }),
         es.count('api::article.article', { filters, publicationState: 'live' }),
       ]);
-      
+
       const pageSize = limit;
       const page = pageSize > 0 ? Math.floor(offset / pageSize) + 1 : 1;
       const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
