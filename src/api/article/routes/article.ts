@@ -50,9 +50,9 @@ export default {
     },
     {
       method: 'GET',
-      path: '/articles/bycategory/:slug',
+      path: '/articles/by-category/:slug',
       handler: 'article.byCategory',
-      config: { auth: false, policies: ['global::public-defaults'] },
+      config: { auth: false }
     },
     {
       method: 'GET',
