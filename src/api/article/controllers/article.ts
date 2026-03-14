@@ -937,8 +937,12 @@ Sitemap: ${origin}/news-sitemap.xml
     async byCategory(ctx) {
       ctx.set('Cache-Control', 'public, max-age=60');
 
-      const limit = parseLimit(ctx.query.limit, 100);
-      const offset = parseNumber(ctx.query.offset) ?? 0;
+      // Support both pagination formats: pagination[page] or offset/limit
+      const pagination = ctx.query.pagination as any;
+      const page = typeof pagination?.page === 'number' ? pagination.page : 1;
+      const pageSize = typeof pagination?.pageSize === 'number' ? pagination.pageSize : parseLimit(ctx.query.limit, 100);
+      const offset = parseNumber(ctx.query.offset) ?? ((page - 1) * pageSize);
+      const limit = pageSize;
       const categorySlug = parseString(ctx.params.slug);
 
       if (!categorySlug) {
@@ -975,15 +979,15 @@ Sitemap: ${origin}/news-sitemap.xml
         es.count('api::article.article', { filters, publicationState: 'live' }),
       ]);
 
-      const pageSize = limit;
-      const page = pageSize > 0 ? Math.floor(offset / pageSize) + 1 : 1;
-      const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
+      // Calculate actual page info for response
+      const currentPage = limit > 0 ? Math.floor(offset / limit) + 1 : 1;
+      const totalPages = limit > 0 ? Math.ceil(total / limit) : 1;
 
       return {
         data: (entities as any[]).map((e) => normalizeArticle(e, origin, { excludeContent: true })),
         total,
-        page,
-        pageSize,
+        page: currentPage,
+        pageSize: limit,
         totalPages,
       };
     },
@@ -1045,10 +1049,18 @@ Sitemap: ${origin}/news-sitemap.xml
       const origin = getPublicOrigin(ctx);
       const q: any = await (this as any).sanitizeQuery(ctx);
       const filters: Record<string, any> = q.filters ? JSON.parse(JSON.stringify(q.filters)) : {};
-      const start = typeof q.start === 'number' ? q.start : 0;
-      // Increase default limit from 25 to 100
-      const limit = typeof q.limit === 'number' ? Math.min(q.limit, MAX_LIMIT) : 100;
-      const sort = q.sort && Array.isArray(q.sort) && q.sort.length > 0 ? q.sort : [{ publishedAt: 'desc' }];
+      
+      // Support both pagination formats: pagination[page] or start/limit
+      const pagination = q.pagination as any;
+      const pageNum = typeof pagination?.page === 'number' ? pagination.page : 1;
+      const pageSizeNum = typeof pagination?.pageSize === 'number' ? pagination.pageSize : (typeof q.limit === 'number' ? Math.min(q.limit, MAX_LIMIT) : 100);
+      const start = typeof q.start === 'number' ? q.start : ((pageNum - 1) * pageSizeNum);
+      const limit = typeof q.limit === 'number' ? Math.min(q.limit, MAX_LIMIT) : pageSizeNum;
+      
+      // Use deterministic sorting: publishedAt desc, id desc
+      const sort = q.sort && Array.isArray(q.sort) && q.sort.length > 0 
+        ? q.sort 
+        : [{ publishedAt: 'desc' }, { id: 'desc' }];
       const publicationState = q.publicationState || 'live';
 
       const [entities, total] = await Promise.all([
