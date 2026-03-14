@@ -121,7 +121,8 @@ export default {
     const [articles, categories, tags] = await Promise.all([
       fetchAll(strapi, 'api::article.article', {
         filters: {},
-        sort: [{ publishedAt: 'desc' }],
+        // Using deterministic sorting: publishedAt desc, id desc
+        sort: [{ publishedAt: 'desc' }, { id: 'desc' }],
         fields: ['slug', 'updatedAt', 'publishedAt', 'createdAt', 'canonicalUrl'],
         populate: { category: { fields: ['slug'] } },
         publicationState: 'live',

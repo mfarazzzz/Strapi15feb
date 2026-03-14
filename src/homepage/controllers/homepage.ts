@@ -1,4 +1,5 @@
 import { factories } from '@strapi/strapi';
+import { ARTICLE_SORT } from '../../utils/articleSort';
 
 export default factories.createCoreController('api::homepage.homepage' as any, ({ strapi }) => ({
   async index(ctx) {
@@ -29,7 +30,7 @@ export default factories.createCoreController('api::homepage.homepage' as any, (
         // Query 1: Hero articles
         es.findMany('api::article.article', {
           filters: { isFeatured: true },
-          sort: [{ publishedAt: 'desc' }],
+          sort: ARTICLE_SORT,
           populate,
           limit: 5,
           publicationState: 'live'
@@ -43,7 +44,7 @@ export default factories.createCoreController('api::homepage.homepage' as any, (
               { category: { $eq: 'editorials' } }
             ]
           },
-          sort: [{ publishedAt: 'desc' }],
+          sort: ARTICLE_SORT,
           populate,
           limit: 5,
           publicationState: 'live'
@@ -58,7 +59,7 @@ export default factories.createCoreController('api::homepage.homepage' as any, (
                 { category: { $eq: slug } }
               ]
             },
-            sort: [{ publishedAt: 'desc' }],
+            sort: ARTICLE_SORT,
             populate,
             limit: 6,
             publicationState: 'live'
