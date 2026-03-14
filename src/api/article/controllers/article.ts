@@ -1126,6 +1126,30 @@ Sitemap: ${origin}/news-sitemap.xml
       const sortField = sortFieldRaw === 'publishedDate' ? 'publishedAt' : sortFieldRaw;
       const sortArray = [{ [sortField]: order }];
 
+      const sortDiagnostics = String(process.env.SORT_DIAGNOSTICS ?? '').trim().toLowerCase();
+      if (sortDiagnostics === '1' || sortDiagnostics === 'true' || sortDiagnostics === 'yes') {
+        strapi.log.info(
+          JSON.stringify({
+            type: 'sort_query',
+            endpoint: 'adminFind',
+            requestId: ctx.state?.requestId,
+            limit,
+            offset,
+            filters: {
+              category,
+              parent,
+              status,
+              featured,
+              breaking,
+              author,
+              search: search ? true : false,
+            },
+            sort: sortArray,
+            publicationState: 'preview',
+          }),
+        );
+      }
+
       // IMPORTANT: Ensure we fetch draft AND published content for Admin Dashboard
       // Strapi v5 Entity Service defaults to publicationState: 'live' if not specified
       // We must explicitly set 'preview' to see everything.

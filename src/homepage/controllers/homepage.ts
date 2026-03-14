@@ -80,5 +80,50 @@ export default factories.createCoreController('api::homepage.homepage' as any, (
     } catch (error) {
       ctx.throw(500, 'Failed to fetch homepage data');
     }
-  }
+  },
+
+  async health(ctx) {
+    const start = Date.now();
+    ctx.set('Cache-Control', 'no-store');
+    ctx.type = 'application/json';
+
+    let dbOk = true;
+    let dbError: string | undefined;
+    try {
+      await strapi.db.connection.raw('select 1');
+    } catch (e) {
+      dbOk = false;
+      dbError = e instanceof Error ? e.message : String(e || 'DB error');
+      if (dbError.length > 500) dbError = dbError.slice(0, 500);
+    }
+
+    const pool = strapi?.db?.connection?.client?.pool;
+    const poolStats =
+      pool && typeof pool === 'object'
+        ? {
+            used: typeof pool.numUsed === 'function' ? pool.numUsed() : undefined,
+            free: typeof pool.numFree === 'function' ? pool.numFree() : undefined,
+            pendingAcquires: typeof pool.numPendingAcquires === 'function' ? pool.numPendingAcquires() : undefined,
+            pendingCreates: typeof pool.numPendingCreates === 'function' ? pool.numPendingCreates() : undefined,
+          }
+        : undefined;
+
+    ctx.body = {
+      ok: dbOk,
+      uptimeSec: Math.round(process.uptime()),
+      pid: process.pid,
+      memory: process.memoryUsage(),
+      eventLoopDelayMs:
+        typeof (globalThis as any).__eventLoopDelayMeanNs === 'number'
+          ? Math.round(((globalThis as any).__eventLoopDelayMeanNs as number) / 1e6)
+          : undefined,
+      db: {
+        ok: dbOk,
+        error: dbError,
+        pool: poolStats,
+      },
+      responseTimeMs: Date.now() - start,
+      timestamp: new Date().toISOString(),
+    };
+  },
 }));

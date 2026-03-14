@@ -1,4 +1,5 @@
 // import type { Core } from '@strapi/strapi';
+import { monitorEventLoopDelay } from 'perf_hooks';
 
 export default {
   /**
@@ -17,6 +18,83 @@ export default {
    * run jobs, or perform some special logic.
    */
   async bootstrap({ strapi }: { strapi: any }) {
+    const obsEnabledRaw = String(process.env.OBSERVABILITY_ENABLED ?? 'true').trim().toLowerCase();
+    const obsEnabled = obsEnabledRaw !== '0' && obsEnabledRaw !== 'false' && obsEnabledRaw !== 'no';
+    if (obsEnabled && !(globalThis as any).__observabilityInstalled) {
+      (globalThis as any).__observabilityInstalled = true;
+
+      const loopDelay = monitorEventLoopDelay({ resolution: 20 });
+      loopDelay.enable();
+
+      const updateEventLoopDelay = () => {
+        if (typeof (loopDelay as any)?.mean === 'number') {
+          (globalThis as any).__eventLoopDelayMeanNs = (loopDelay as any).mean as number;
+        }
+      };
+      updateEventLoopDelay();
+
+      const intervalSecRaw = Number(process.env.OBSERVABILITY_LOG_INTERVAL_SEC ?? 300);
+      const intervalSec = Number.isFinite(intervalSecRaw) && intervalSecRaw > 0 ? intervalSecRaw : 300;
+      const timer = setInterval(() => {
+        updateEventLoopDelay();
+        const pool = strapi?.db?.connection?.client?.pool;
+        const poolStats =
+          pool && typeof pool === 'object'
+            ? {
+                used: typeof pool.numUsed === 'function' ? pool.numUsed() : undefined,
+                free: typeof pool.numFree === 'function' ? pool.numFree() : undefined,
+                pendingAcquires:
+                  typeof pool.numPendingAcquires === 'function' ? pool.numPendingAcquires() : undefined,
+                pendingCreates:
+                  typeof pool.numPendingCreates === 'function' ? pool.numPendingCreates() : undefined,
+              }
+            : undefined;
+        strapi.log.info(
+          JSON.stringify({
+            type: 'process_metrics',
+            pid: process.pid,
+            uptimeSec: Math.round(process.uptime()),
+            memory: process.memoryUsage(),
+            eventLoopDelayMs:
+              typeof (loopDelay as any)?.mean === 'number'
+                ? Math.round(((loopDelay as any).mean as number) / 1e6)
+                : undefined,
+            dbPool: poolStats,
+            timestamp: new Date().toISOString(),
+          }),
+        );
+      }, intervalSec * 1000);
+      (timer as any)?.unref?.();
+
+      process.on('warning', (w) => {
+        strapi.log.warn(
+          JSON.stringify({
+            type: 'process_warning',
+            name: (w as any)?.name,
+            message: (w as any)?.message,
+            stack: (w as any)?.stack,
+          }),
+        );
+      });
+      process.on('unhandledRejection', (reason) => {
+        strapi.log.error(
+          JSON.stringify({
+            type: 'unhandled_rejection',
+            reason: reason instanceof Error ? reason.message : String(reason || ''),
+          }),
+        );
+      });
+      process.on('uncaughtException', (err) => {
+        strapi.log.error(
+          JSON.stringify({
+            type: 'uncaught_exception',
+            message: err instanceof Error ? err.message : String(err || ''),
+            stack: err instanceof Error ? err.stack : undefined,
+          }),
+        );
+      });
+    }
+
     const toNumber = (value: any): number => {
       const n = typeof value === 'number' ? value : Number(value);
       return Number.isFinite(n) ? n : 0;

@@ -8,6 +8,15 @@ export default {
         auth: false,
         policies: []
       }
+    },
+    {
+      method: 'GET',
+      path: '/healthz',
+      handler: 'homepage.health',
+      config: {
+        auth: false,
+        policies: []
+      }
     }
   ]
 };

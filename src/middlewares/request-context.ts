@@ -1,5 +1,8 @@
 import { randomUUID } from 'crypto';
 
+// NOTE: Event loop monitoring is handled centrally in src/index.ts bootstrap
+// to avoid duplicate monitoring and potential memory leaks from histogram accumulation
+
 export default (_config: any, { strapi }: { strapi: any }) => {
   return async (ctx: any, next: any) => {
     const start = Date.now();
@@ -25,6 +28,31 @@ export default (_config: any, { strapi }: { strapi: any }) => {
         responseTime,
         requestId,
       };
+      const metricsEnabled = String(process.env.OBSERVABILITY_LOG_METRICS ?? '')
+        .trim()
+        .toLowerCase();
+      if (metricsEnabled === '1' || metricsEnabled === 'true' || metricsEnabled === 'yes') {
+        const pool = strapi?.db?.connection?.client?.pool;
+        const poolStats =
+          pool && typeof pool === 'object'
+            ? {
+                used: typeof pool.numUsed === 'function' ? pool.numUsed() : undefined,
+                free: typeof pool.numFree === 'function' ? pool.numFree() : undefined,
+                pendingAcquires:
+                  typeof pool.numPendingAcquires === 'function' ? pool.numPendingAcquires() : undefined,
+                pendingCreates:
+                  typeof pool.numPendingCreates === 'function' ? pool.numPendingCreates() : undefined,
+              }
+            : undefined;
+        (log as any).pid = process.pid;
+        (log as any).uptimeSec = Math.round(process.uptime());
+        (log as any).memory = process.memoryUsage();
+        (log as any).eventLoopDelayMs =
+          typeof (eventLoopDelay as any)?.mean === 'number'
+            ? Math.round(((eventLoopDelay as any).mean as number) / 1e6)
+            : undefined;
+        (log as any).dbPool = poolStats;
+      }
       strapi.log.info(JSON.stringify(log));
     }
   };

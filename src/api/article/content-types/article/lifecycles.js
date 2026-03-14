@@ -387,6 +387,22 @@ module.exports = {
   async afterCreate(event) {
     const { result } = event;
     if (!result?.publishedAt) return;
+    const publishDiagnostics = String(process.env.PUBLISH_DIAGNOSTICS ?? '').trim().toLowerCase();
+    if (publishDiagnostics === '1' || publishDiagnostics === 'true' || publishDiagnostics === 'yes') {
+      try {
+        strapi.log.info(
+          JSON.stringify({
+            type: 'publish_event',
+            action: 'afterCreate',
+            id: result?.id,
+            slug: result?.slug,
+            publishedAt: result?.publishedAt,
+          }),
+        );
+      } catch {
+        void 0;
+      }
+    }
     await clearSitemapCache();
     try {
       await fetch('https://rampurnews.com/api/revalidate', {
@@ -410,6 +426,23 @@ module.exports = {
   async afterUpdate(event) {
     const { result } = event;
     if (!result?.publishedAt) return;
+    const publishDiagnostics = String(process.env.PUBLISH_DIAGNOSTICS ?? '').trim().toLowerCase();
+    if (publishDiagnostics === '1' || publishDiagnostics === 'true' || publishDiagnostics === 'yes') {
+      try {
+        strapi.log.info(
+          JSON.stringify({
+            type: 'publish_event',
+            action: 'afterUpdate',
+            id: result?.id,
+            slug: result?.slug,
+            publishedAt: result?.publishedAt,
+            wasPublished: Boolean(event?.state?.wasPublished),
+          }),
+        );
+      } catch {
+        void 0;
+      }
+    }
     await clearSitemapCache();
     try {
       await fetch('https://rampurnews.com/api/revalidate', {
