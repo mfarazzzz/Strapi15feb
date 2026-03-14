@@ -47,10 +47,11 @@ export default (_config: any, { strapi }: { strapi: any }) => {
         (log as any).pid = process.pid;
         (log as any).uptimeSec = Math.round(process.uptime());
         (log as any).memory = process.memoryUsage();
+        // Event loop delay is monitored centrally in src/index.ts bootstrap
+        // Access via global to avoid duplicate monitoring overhead
+        const globalLoopDelay = (globalThis as any).__eventLoopDelayMeanNs;
         (log as any).eventLoopDelayMs =
-          typeof (eventLoopDelay as any)?.mean === 'number'
-            ? Math.round(((eventLoopDelay as any).mean as number) / 1e6)
-            : undefined;
+          typeof globalLoopDelay === 'number' ? Math.round(globalLoopDelay / 1e6) : undefined;
         (log as any).dbPool = poolStats;
       }
       strapi.log.info(JSON.stringify(log));

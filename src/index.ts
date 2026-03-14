@@ -26,6 +26,19 @@ export default {
       const loopDelay = monitorEventLoopDelay({ resolution: 20 });
       loopDelay.enable();
 
+      // Reset histogram periodically to prevent memory accumulation
+      // The histogram grows unbounded if not reset, causing memory leaks over days of uptime
+      const histogramResetIntervalMs = 60000; // Reset every minute
+      setInterval(() => {
+        try {
+          // Reset the internal histogram by calling disable then enable
+          loopDelay.disable();
+          loopDelay.enable();
+        } catch (e) {
+          // Ignore reset errors
+        }
+      }, histogramResetIntervalMs).unref();
+
       const updateEventLoopDelay = () => {
         if (typeof (loopDelay as any)?.mean === 'number') {
           (globalThis as any).__eventLoopDelayMeanNs = (loopDelay as any).mean as number;
