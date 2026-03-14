@@ -1,5 +1,4 @@
 import { factories } from '@strapi/strapi';
-import { ARTICLE_SORT } from '../../utils/articleSort';
 
 export default factories.createCoreController('api::homepage.homepage' as any, ({ strapi }) => ({
   async index(ctx) {
@@ -26,11 +25,17 @@ export default factories.createCoreController('api::homepage.homepage' as any, (
 
     try {
       // PARALLEL QUERIES - Fetch all data in parallel instead of sequential
+      // Using type-safe sorting with proper casting for Strapi entityService
+      const deterministicSort: any = [
+        { publishedAt: 'desc' },
+        { id: 'desc' }
+      ];
+      
       const [hero, editorial, ...categoryArticles] = await Promise.all([
         // Query 1: Hero articles
         es.findMany('api::article.article', {
           filters: { isFeatured: true },
-          sort: ARTICLE_SORT,
+          sort: deterministicSort,
           populate,
           limit: 5,
           publicationState: 'live'
@@ -40,11 +45,10 @@ export default factories.createCoreController('api::homepage.homepage' as any, (
           filters: {
             $or: [
               { category: { slug: 'editorials' } },
-              { categories: { slug: 'editorials' } },
-              { category: { $eq: 'editorials' } }
+              { categories: { slug: 'editorials' } }
             ]
           },
-          sort: ARTICLE_SORT,
+          sort: deterministicSort,
           populate,
           limit: 5,
           publicationState: 'live'
@@ -55,11 +59,10 @@ export default factories.createCoreController('api::homepage.homepage' as any, (
             filters: {
               $or: [
                 { category: { slug } },
-                { categories: { slug } },
-                { category: { $eq: slug } }
+                { categories: { slug } }
               ]
             },
-            sort: ARTICLE_SORT,
+            sort: deterministicSort,
             populate,
             limit: 6,
             publicationState: 'live'

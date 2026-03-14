@@ -1,7 +1,5 @@
 const ARTICLE_UID = 'api::article.article';
 
-import { TRENDING_SORT } from '../../../utils/articleSort';
-
 type TrendingOptions = {
   limit?: number;
   lookbackDays?: number;
@@ -31,8 +29,8 @@ export const getTrendingEntities = async (strapi: any, options: TrendingOptions 
 
   const candidates = await strapi.entityService.findMany(ARTICLE_UID, {
     filters: { publishedAt: { $gte: since } },
-    // Using TRENDING_SORT for deterministic ordering when views/publishedAt are equal
-    sort: TRENDING_SORT,
+    // Using deterministic sorting: views desc, publishedAt desc, id desc
+    sort: [{ views: 'desc' }, { publishedAt: 'desc' }, { id: 'desc' }] as any,
     fields: [
       'title',
       'short_headline',

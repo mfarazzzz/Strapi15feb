@@ -122,7 +122,7 @@ export default {
       fetchAll(strapi, 'api::article.article', {
         filters: {},
         // Using deterministic sorting: publishedAt desc, id desc
-        sort: [{ publishedAt: 'desc' }, { id: 'desc' }],
+        sort: [{ publishedAt: 'desc' }, { id: 'desc' }] as any,
         fields: ['slug', 'updatedAt', 'publishedAt', 'createdAt', 'canonicalUrl'],
         populate: { category: { fields: ['slug'] } },
         publicationState: 'live',

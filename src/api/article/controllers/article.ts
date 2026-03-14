@@ -1,5 +1,4 @@
 import { factories } from '@strapi/strapi';
-import { ARTICLE_SORT, TRENDING_SORT } from '../../../utils/articleSort';
 import trendingService from '../services/trending';
 
 const MAX_LIMIT = 5000;
@@ -803,8 +802,8 @@ export default factories.createCoreController('api::article.article', ({ strapi 
         filters: {
           publishedAt: { $gte: since },
         },
-        // Using centralized ARTICLE_SORT for deterministic ordering
-        sort: ARTICLE_SORT,
+        // Using deterministic sorting: publishedAt desc, id desc
+        sort: [{ publishedAt: 'desc' }, { id: 'desc' }] as any,
         limit: 1000,
         populate: { featured_image: true, category: true },
         publicationState: 'live',
@@ -857,8 +856,8 @@ ${urls.join('')}
       const [articles, categories, authors] = await Promise.all([
         es.findMany('api::article.article', {
           filters: { },
-          // Using centralized ARTICLE_SORT for deterministic ordering
-          sort: ARTICLE_SORT,
+          // Using deterministic sorting: publishedAt desc, id desc
+          sort: [{ publishedAt: 'desc' }, { id: 'desc' }] as any,
           // Increase sitemap limit to 10,000 to cover more old articles
           limit: 10000,
           populate: { category: true },
@@ -965,8 +964,8 @@ Sitemap: ${origin}/news-sitemap.xml
       const [entities, total] = await Promise.all([
         es.findMany('api::article.article', {
           filters,
-          // Using centralized ARTICLE_SORT for deterministic ordering
-          sort: ARTICLE_SORT,
+          // Using deterministic sorting: publishedAt desc, id desc
+          sort: [{ publishedAt: 'desc' }, { id: 'desc' }] as any,
           populate: articlePopulate,
           fields: LIST_FIELDS,
           start: offset,
@@ -1015,7 +1014,8 @@ Sitemap: ${origin}/news-sitemap.xml
       const [entities, total] = await Promise.all([
         es.findMany('api::article.article', {
           filters,
-          sort: [{ [DEFAULT_SORT_FIELD]: 'desc' }],
+          // Using deterministic sorting with secondary id sort
+          sort: [{ [DEFAULT_SORT_FIELD]: 'desc' }, { id: 'desc' }] as any,
           populate: articlePopulate,
           fields: LIST_FIELDS,
           start: offset,
