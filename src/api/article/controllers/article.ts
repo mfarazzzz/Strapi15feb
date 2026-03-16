@@ -13,7 +13,7 @@ const DEFAULT_SORT_FIELD = 'publishedAt';
 const LIST_FIELDS = [
   'title', 'short_headline', 'slug', 'excerpt', 'publishedAt', 'createdAt', 'updatedAt',
   'readTime', 'isFeatured', 'isBreaking', 'isEditorsPick', 'contentType', 'views', 'shares',
-  'focus_keyword', 'location', 'news_category', 'seoTitle', 'discoverEligible',
+  'focus_keyword', 'location', 'news_category', 'seoTitle', 'ogTitle', 'ogDescription', 'discoverEligible',
   'canonicalUrl', 'newsKeywords', 'meta_description', 'videoUrl', 'videoType', 'videoTitle'
 ];
 
@@ -215,6 +215,8 @@ const normalizeArticle = (entity: any, origin: string, options: { excludeContent
     metaDescription: entity?.meta_description ? String(entity.meta_description) : undefined,
     ogImage: featuredImageUrl || undefined,
     seoTitle: entity?.seoTitle ? String(entity.seoTitle) : undefined,
+    ogTitle: entity?.ogTitle ? String(entity.ogTitle) : undefined,
+    ogDescription: entity?.ogDescription ? String(entity.ogDescription) : undefined,
     discoverEligible: typeof entity?.discoverEligible === 'boolean' ? entity.discoverEligible : undefined,
     canonicalUrl: entity?.canonicalUrl ? String(entity.canonicalUrl) : undefined,
     newsKeywords: entity?.newsKeywords ? String(entity.newsKeywords) : undefined,
@@ -556,6 +558,8 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     if (!isPartial || 'location' in input) set('location', parseString(input.location) ?? input.location ?? undefined);
     if (!isPartial || 'news_category' in input) set('news_category', parseString(input.news_category) ?? input.news_category ?? undefined);
     if (!isPartial || 'seoTitle' in input) set('seoTitle', parseString(input.seoTitle) ?? input.seoTitle ?? undefined);
+    if (!isPartial || 'ogTitle' in input) set('ogTitle', parseString(input.ogTitle) ?? input.ogTitle ?? undefined);
+    if (!isPartial || 'ogDescription' in input) set('ogDescription', parseString(input.ogDescription) ?? input.ogDescription ?? undefined);
     if (!isPartial || 'canonicalUrl' in input) set('canonicalUrl', parseString(input.canonicalUrl) ?? input.canonicalUrl ?? undefined);
     if (!isPartial || 'newsKeywords' in input) set('newsKeywords', parseString(input.newsKeywords) ?? input.newsKeywords ?? undefined);
     if (!isPartial || 'schemaJson' in input) {
