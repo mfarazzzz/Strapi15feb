@@ -112,6 +112,19 @@
       "type": "string",
       "maxLength": 70
     },
+    "ogTitle": {
+      "type": "string",
+      "maxLength": 70
+    },
+    "ogDescription": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "ogImage": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images"]
+    },
     "meta_description": {
       "type": "string",
       "required": true,
