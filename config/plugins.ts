@@ -20,4 +20,8 @@ export default ({ env }) => ({
       defaultLocale: 'hi',
     },
   },
+  'rbac-manager': {
+    enabled: true,
+    resolve: './src/plugins/rbac-manager',
+  },
 });
