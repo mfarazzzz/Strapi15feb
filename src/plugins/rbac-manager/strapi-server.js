@@ -1,8 +1,10 @@
+'use strict';
+
 module.exports = (plugin) => {
+  // Plugin lifecycle hooks can be added here if needed
+  // Example:
+  // plugin.register = async () => { ... };
+  // plugin.bootstrap = async () => { ... };
+  
   return plugin;
 };
-
-module.exports.type = 'plugin';
-module.exports.name = 'rbac-manager';
-module.exports.pluginName = 'rbac-manager';
-module.exports.id = 'rbac-manager';

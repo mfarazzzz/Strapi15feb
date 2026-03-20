@@ -1,13 +1,5 @@
 import { PLUGIN_ID } from './pluginId';
-
-const HomePage = () => {
-  return (
-    <div style={{ padding: '20px' }}>
-      <h1>RBAC Manager</h1>
-      <p>Loading...</p>
-    </div>
-  );
-};
+import HomePage from './pages/HomePage';
 
 export default {
   register(app: any) {
