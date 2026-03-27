@@ -22,10 +22,6 @@
     {
       "name": "articles_views_idx",
       "columns": ["views"]
-    },
-    {
-      "name": "articles_category_publishedAt_idx",
-      "columns": ["category_id", "published_at"]
     }
   ],
   "attributes": {
