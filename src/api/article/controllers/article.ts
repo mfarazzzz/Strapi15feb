@@ -1363,23 +1363,23 @@ Sitemap: ${origin}/news-sitemap.xml
 
     async publish(ctx) {
       const id = String(ctx.params.id || '').trim();
-      if (!id) {
-        ctx.badRequest('Invalid id');
-        return;
-      }
+      if (!id) { ctx.badRequest('Invalid id'); return; }
 
       const origin = getPublicOrigin(ctx);
       const current = await es.findOne('api::article.article', id, {
         publicationState: 'preview',
-        fields: ['id', 'documentId', 'publishedAt'],
+        fields: ['id', 'documentId', 'publishedAt', 'workflowStatus'],
       });
-      
-      if (!current) {
-        ctx.notFound('Article not found');
+
+      if (!current) { ctx.notFound('Article not found'); return; }
+
+      // Enforce: article must be approved before publishing
+      const workflowStatus = (current as any)?.workflowStatus;
+      if (workflowStatus && workflowStatus !== 'approved') {
+        ctx.forbidden('Article must be approved by an editor before publishing');
         return;
       }
 
-      // If already published, just return it
       if (current.publishedAt) {
         const entity = await es.findOne('api::article.article', id, {
           populate: articlePopulate,
@@ -1391,12 +1391,11 @@ Sitemap: ${origin}/news-sitemap.xml
       const documentId = parseString((current as any)?.documentId) || id;
       const docsFactory = (strapi as any).documents;
       const docs = typeof docsFactory === 'function' ? docsFactory.call(strapi, 'api::article.article') : null;
-      
+
       try {
         if (docs && typeof docs.publish === 'function') {
           await docs.publish({ documentId });
         } else {
-          // Fallback for non-Documents service (standard Entity Service)
           await es.update('api::article.article', id, { data: { publishedAt: new Date().toISOString() } });
         }
       } catch (error) {
@@ -1406,9 +1405,37 @@ Sitemap: ${origin}/news-sitemap.xml
 
       const entity = await es.findOne('api::article.article', id, {
         populate: articlePopulate,
-        publicationState: 'live', // Ensure we fetch the live version
+        publicationState: 'live',
       });
-      
+      return normalizeArticle(entity, origin);
+    },
+
+    async approve(ctx) {
+      const id = String(ctx.params.id || '').trim();
+      if (!id) { ctx.badRequest('Invalid id'); return; }
+
+      const origin = getPublicOrigin(ctx);
+      const entity = await es.update('api::article.article', id, {
+        data: { workflowStatus: 'approved' },
+        populate: articlePopulate,
+      });
+      if (!entity) { ctx.notFound('Article not found'); return; }
+      return normalizeArticle(entity, origin);
+    },
+
+    async reject(ctx) {
+      const id = String(ctx.params.id || '').trim();
+      if (!id) { ctx.badRequest('Invalid id'); return; }
+
+      const body = ctx.request.body?.data ?? ctx.request.body ?? {};
+      const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
+
+      const origin = getPublicOrigin(ctx);
+      const entity = await es.update('api::article.article', id, {
+        data: { workflowStatus: 'rejected', workflowNote: reason || null },
+        populate: articlePopulate,
+      });
+      if (!entity) { ctx.notFound('Article not found'); return; }
       return normalizeArticle(entity, origin);
     },
 

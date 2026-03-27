@@ -1,0 +1,38 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cms_users",
+  "info": {
+    "singularName": "cms-user",
+    "pluralName": "cms-users",
+    "displayName": "CMS User",
+    "description": "Editorial workflow roles — independent of Strapi plugin roles."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "role": {
+      "type": "enumeration",
+      "enum": ["writer", "editor", "publisher"],
+      "required": true,
+      "default": "writer"
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    },
+    "displayName": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "email": {
+      "type": "email",
+      "unique": true
+    }
+  }
+}

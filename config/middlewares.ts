@@ -18,6 +18,7 @@ export default ({ env }) => {
   return [
     'strapi::logger',
     'global::request-context',
+    'global::role-context',
     {
       name: 'global::slow-request',
       config: {
@@ -45,7 +46,7 @@ export default ({ env }) => {
       config: {
         origin: safeOrigins.length > 0 ? safeOrigins : fallbackOrigins,
         credentials: true,
-        headers: env.array('CORS_HEADERS', ['Content-Type', 'Authorization', 'Origin', 'Accept']),
+        headers: env.array('CORS_HEADERS', ['Content-Type', 'Authorization', 'Origin', 'Accept', 'x-cms-role']),
       },
     },
     'strapi::compression',

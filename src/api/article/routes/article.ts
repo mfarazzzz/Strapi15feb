@@ -100,13 +100,27 @@ export default {
       method: 'POST',
       path: '/articles/:id/publish',
       handler: 'article.publish',
-      config: { auth: {}, policies: ['global::cms-role'] },
+      // Only publishers can publish; cms-role still validates the JWT
+      config: { auth: {}, policies: ['global::cms-role', { name: 'global::workflow-role', config: { minRole: 'publisher' } }] },
     },
     {
       method: 'POST',
       path: '/articles/:id/unpublish',
       handler: 'article.unpublish',
-      config: { auth: {}, policies: ['global::cms-role'] },
+      config: { auth: {}, policies: ['global::cms-role', { name: 'global::workflow-role', config: { minRole: 'publisher' } }] },
+    },
+    {
+      method: 'POST',
+      path: '/articles/:id/approve',
+      handler: 'article.approve',
+      // Editors and publishers can approve
+      config: { auth: {}, policies: ['global::cms-role', { name: 'global::workflow-role', config: { minRole: 'editor' } }] },
+    },
+    {
+      method: 'POST',
+      path: '/articles/:id/reject',
+      handler: 'article.reject',
+      config: { auth: {}, policies: ['global::cms-role', { name: 'global::workflow-role', config: { minRole: 'editor' } }] },
     },
     {
       method: 'DELETE',

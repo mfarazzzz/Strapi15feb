@@ -137,6 +137,14 @@
       "type": "boolean",
       "default": false
     },
+    "workflowStatus": {
+      "type": "enumeration",
+      "enum": ["draft", "submitted", "approved", "rejected"],
+      "default": "draft"
+    },
+    "workflowNote": {
+      "type": "text"
+    },
     "contentType": {
       "type": "enumeration",
       "enum": [
