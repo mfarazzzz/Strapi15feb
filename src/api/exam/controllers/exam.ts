@@ -166,6 +166,24 @@ export default factories.createCoreController('api::exam.exam' as any, ({ strapi
     return normalizeExam(entity);
   },
 
+  async publish(ctx) {
+    const id = ctx.params.id;
+    const entity = await (strapi.entityService as any).update('api::exam.exam', id, {
+      data: { publishedAt: new Date().toISOString() },
+      populate: { image: true, seo: { populate: { ogImage: true } } },
+    });
+    return normalizeExam(entity);
+  },
+
+  async unpublish(ctx) {
+    const id = ctx.params.id;
+    const entity = await (strapi.entityService as any).update('api::exam.exam', id, {
+      data: { publishedAt: null },
+      populate: { image: true, seo: { populate: { ogImage: true } } },
+    });
+    return normalizeExam(entity);
+  },
+
   async delete(ctx) {
     const id = ctx.params.id;
     await (strapi.entityService as any).delete('api::exam.exam', id);

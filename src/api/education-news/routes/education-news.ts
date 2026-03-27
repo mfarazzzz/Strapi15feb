@@ -31,6 +31,18 @@ export default {
       config: { auth: {}, policies: ['global::cms-role'] },
     },
     {
+      method: 'POST',
+      path: '/education-news/:id/publish',
+      handler: 'education-news.publish',
+      config: { auth: {}, policies: ['global::cms-role'] },
+    },
+    {
+      method: 'POST',
+      path: '/education-news/:id/unpublish',
+      handler: 'education-news.unpublish',
+      config: { auth: {}, policies: ['global::cms-role'] },
+    },
+    {
       method: 'DELETE',
       path: '/education-news/:id',
       handler: 'education-news.delete',

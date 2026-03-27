@@ -37,6 +37,18 @@ export default {
       config: { auth: {}, policies: ['global::cms-role'] },
     },
     {
+      method: 'POST',
+      path: '/exams/:id/publish',
+      handler: 'exam.publish',
+      config: { auth: {}, policies: ['global::cms-role'] },
+    },
+    {
+      method: 'POST',
+      path: '/exams/:id/unpublish',
+      handler: 'exam.unpublish',
+      config: { auth: {}, policies: ['global::cms-role'] },
+    },
+    {
       method: 'DELETE',
       path: '/exams/:id',
       handler: 'exam.delete',

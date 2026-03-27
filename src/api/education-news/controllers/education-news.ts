@@ -17,10 +17,6 @@ const normalizeEducationNews = (entity: any) => {
   if (!normalized.excerptHindi && normalized.excerpt) normalized.excerptHindi = normalized.excerpt;
   if (!normalized.contentHindi && normalized.content) normalized.contentHindi = normalized.content;
 
-  if (!normalized.publishedAt && typeof normalized.createdAt === 'string') {
-    normalized.publishedAt = normalized.createdAt;
-  }
-
   if (typeof normalized.updatedAt === 'string') {
     normalized.lastUpdated = normalized.updatedAt;
   }
@@ -33,11 +29,14 @@ const normalizeEducationNews = (entity: any) => {
 
 export default factories.createCoreController('api::education-news.education-news' as any, ({ strapi }) => ({
   async find(ctx) {
+    const limit = Math.min(Number(ctx.query?.['pagination[limit]'] ?? 25), 100);
+    const offset = Number(ctx.query?.['pagination[start]'] ?? 0);
     const entities = await (strapi.entityService as any).findMany('api::education-news.education-news', {
       sort: { publishedAt: 'desc' },
       populate: { image: true },
       publicationState: 'live',
-      limit: 1000,
+      limit,
+      offset,
     });
     return (entities as any[]).map(normalizeEducationNews);
   },
@@ -86,6 +85,24 @@ export default factories.createCoreController('api::education-news.education-new
     const body = extractData(ctx.request.body);
     const entity = await (strapi.entityService as any).update('api::education-news.education-news', id, {
       data: body,
+      populate: { image: true },
+    });
+    return normalizeEducationNews(entity);
+  },
+
+  async publish(ctx) {
+    const id = ctx.params.id;
+    const entity = await (strapi.entityService as any).update('api::education-news.education-news', id, {
+      data: { publishedAt: new Date().toISOString() },
+      populate: { image: true },
+    });
+    return normalizeEducationNews(entity);
+  },
+
+  async unpublish(ctx) {
+    const id = ctx.params.id;
+    const entity = await (strapi.entityService as any).update('api::education-news.education-news', id, {
+      data: { publishedAt: null },
       populate: { image: true },
     });
     return normalizeEducationNews(entity);

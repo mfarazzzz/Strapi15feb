@@ -128,6 +128,11 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::article.article"
+    },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category"
     }
   }
 }

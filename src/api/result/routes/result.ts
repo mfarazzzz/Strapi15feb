@@ -37,6 +37,18 @@ export default {
       config: { auth: {}, policies: ['global::cms-role'] },
     },
     {
+      method: 'POST',
+      path: '/results/:id/publish',
+      handler: 'result.publish',
+      config: { auth: {}, policies: ['global::cms-role'] },
+    },
+    {
+      method: 'POST',
+      path: '/results/:id/unpublish',
+      handler: 'result.unpublish',
+      config: { auth: {}, policies: ['global::cms-role'] },
+    },
+    {
       method: 'DELETE',
       path: '/results/:id',
       handler: 'result.delete',

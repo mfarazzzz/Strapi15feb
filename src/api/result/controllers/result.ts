@@ -99,6 +99,24 @@ export default factories.createCoreController('api::result.result' as any, ({ st
     return normalizeResult(entity);
   },
 
+  async publish(ctx) {
+    const id = ctx.params.id;
+    const entity = await (strapi.entityService as any).update('api::result.result', id, {
+      data: { publishedAt: new Date().toISOString() },
+      populate: { image: true },
+    });
+    return normalizeResult(entity);
+  },
+
+  async unpublish(ctx) {
+    const id = ctx.params.id;
+    const entity = await (strapi.entityService as any).update('api::result.result', id, {
+      data: { publishedAt: null },
+      populate: { image: true },
+    });
+    return normalizeResult(entity);
+  },
+
   async delete(ctx) {
     const id = ctx.params.id;
     await (strapi.entityService as any).delete('api::result.result', id);
