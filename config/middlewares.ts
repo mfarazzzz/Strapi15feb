@@ -53,7 +53,9 @@ export default ({ env }) => {
     {
       name: 'global::redis-cache',
       config: {
-        enabled: env.bool('REDIS_CACHE_ENABLED', true),
+        // Only enable Redis if a URL is explicitly configured.
+        // Defaulting to enabled with an empty URL causes connection errors on every request.
+        enabled: Boolean(env('REDIS_URL', '')) && env.bool('REDIS_CACHE_ENABLED', true),
         url: env('REDIS_URL', ''),
         ttlSeconds: env.int('REDIS_CACHE_TTL', 60),
         keyPrefix: env('REDIS_CACHE_PREFIX', 'strapi-cache'),
