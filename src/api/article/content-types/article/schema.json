@@ -13,21 +13,19 @@
   "indexes": [
     {
       "name": "articles_slug_idx",
-      "columns": [
-        "slug"
-      ]
+      "columns": ["slug"]
     },
     {
       "name": "articles_publishedAt_idx",
-      "columns": [
-        "published_at"
-      ]
+      "columns": ["published_at"]
     },
     {
       "name": "articles_views_idx",
-      "columns": [
-        "views"
-      ]
+      "columns": ["views"]
+    },
+    {
+      "name": "articles_category_publishedAt_idx",
+      "columns": ["category_id", "published_at"]
     }
   ],
   "attributes": {

@@ -932,6 +932,10 @@ Sitemap: ${origin}/news-sitemap.xml
     },
 
     async trending(ctx) {
+      // Cache trending for 5 minutes — it's computed from views/shares/recency
+      // and doesn't need to be real-time. Without this header every request
+      // fetches 250 articles and scores them in Node.js memory.
+      ctx.set('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=300');
       const limit = parseLimit(ctx.query.limit, 10);
       const origin = getPublicOrigin(ctx);
       const entities = await trendingService.getTrendingEntities(strapi, { limit });
@@ -962,7 +966,9 @@ Sitemap: ${origin}/news-sitemap.xml
             $or: [
               { category: { slug: { $eq: categorySlug } } },
               { categories: { slug: { $eq: categorySlug } } },
-              { category: { $eq: categorySlug } },
+              // Removed: { category: { $eq: categorySlug } } — comparing a
+              // relation field to a string never matches in Strapi 5 and adds
+              // unnecessary query complexity.
             ],
           },
           { publishedAt: { $notNull: true } },

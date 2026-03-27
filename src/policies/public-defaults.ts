@@ -13,9 +13,11 @@ export default async (policyContext: any) => {
     ctx.query.sort = 'publishedAt:desc';
   }
 
-  if (!ctx.query.locale) {
-    ctx.query.locale = 'hi';
-  }
+  // Do NOT inject a default locale. The article/category/author content types
+  // are not i18n-enabled (no locale field in their schemas). Injecting
+  // locale='hi' causes Strapi to filter by locale and silently return 0 results
+  // for content that was created without a locale assignment.
+  // i18n is enabled in plugins.ts for future use but is not active on these types.
 
   const pagination = typeof ctx.query.pagination === 'object' && ctx.query.pagination ? ctx.query.pagination : {};
   const pageRaw = pagination.page ?? ctx.query.page;

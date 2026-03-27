@@ -1,17 +1,33 @@
-export default async (policyContext: any) => {
+/**
+ * cms-role policy
+ *
+ * Guards write/admin endpoints. Allows:
+ *   - Strapi admin panel users (ctx.state.admin)
+ *   - users-permissions users with roles: admin, editor, author, contributor, reporter, authenticated
+ *
+ * Uses the correct Strapi 5 policy signature: (policyContext, { strapi })
+ * so `strapi` is injected rather than accessed as an implicit global.
+ */
+export default async (policyContext: any, { strapi }: { strapi: any }) => {
   if (policyContext?.state?.admin) return true;
+
   let user = policyContext?.state?.user;
+
   if (!user) {
     const auth =
       policyContext?.request?.header?.authorization ??
       policyContext?.request?.headers?.authorization ??
       policyContext?.headers?.authorization;
     const raw = typeof auth === 'string' ? auth.trim() : '';
+
     if (raw.toLowerCase().startsWith('bearer ')) {
       const token = raw.slice(7).trim();
       if (token) {
         try {
-          const payload = await strapi.plugin('users-permissions').service('jwt').verify(token);
+          const payload = await strapi
+            .plugin('users-permissions')
+            .service('jwt')
+            .verify(token);
           const id = payload?.id;
           if (id) {
             user = await strapi.db
@@ -31,15 +47,16 @@ export default async (policyContext: any) => {
   const role = user?.role;
   const type = typeof role?.type === 'string' ? role.type : undefined;
   const name = typeof role?.name === 'string' ? role.name : undefined;
-
   const normalized = (type || name || '').trim().toLowerCase();
+
   if (!normalized) return false;
 
   const allowed = new Set(['admin', 'editor', 'author', 'contributor', 'reporter', 'authenticated']);
   const isAllowed = allowed.has(normalized);
+
   if (!isAllowed) {
-    strapi.log.warn(`Policy blocked user ${user.id} with role ${normalized}`);
+    strapi.log.warn(`[cms-role] Blocked user ${user.id} with role "${normalized}"`);
   }
+
   return isAllowed;
 };
-
