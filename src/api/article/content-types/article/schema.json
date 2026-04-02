@@ -198,6 +198,15 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::category.category"
+    },
+    "seoShortTailKeywords": {
+      "type": "json"
+    },
+    "seoLongTailKeywords": {
+      "type": "json"
+    },
+    "seoKeywordsJson": {
+      "type": "json"
     }
   }
 }

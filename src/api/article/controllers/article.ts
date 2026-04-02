@@ -14,7 +14,9 @@ const LIST_FIELDS = [
   'title', 'short_headline', 'slug', 'excerpt', 'publishedAt', 'createdAt', 'updatedAt',
   'readTime', 'isFeatured', 'isBreaking', 'isEditorsPick', 'contentType', 'views', 'shares',
   'focus_keyword', 'location', 'news_category', 'seoTitle', 'ogTitle', 'ogDescription', 'discoverEligible',
-  'canonicalUrl', 'newsKeywords', 'meta_description', 'videoUrl', 'videoType', 'videoTitle'
+  'canonicalUrl', 'newsKeywords', 'meta_description', 'videoUrl', 'videoType', 'videoTitle',
+  'workflowStatus', 'workflowNote',
+  'seoShortTailKeywords', 'seoLongTailKeywords', 'seoKeywordsJson',
 ];
 
 const resolveSortField = (orderBy: string | undefined) => {
@@ -227,6 +229,13 @@ const normalizeArticle = (entity: any, origin: string, options: { excludeContent
     videoTitle: entity?.videoTitle ? String(entity.videoTitle) : undefined,
     jsonLd: structuredData,
     structuredData,
+    // Workflow
+    workflowStatus: entity?.workflowStatus ? String(entity.workflowStatus) : 'draft',
+    workflowNote: entity?.workflowNote ? String(entity.workflowNote) : undefined,
+    // SEO keyword arrays (stored as JSON in Strapi)
+    seoShortTailKeywords: Array.isArray(entity?.seoShortTailKeywords) ? entity.seoShortTailKeywords : undefined,
+    seoLongTailKeywords: Array.isArray(entity?.seoLongTailKeywords) ? entity.seoLongTailKeywords : undefined,
+    seoKeywordsJson: entity?.seoKeywordsJson ?? undefined,
   };
 };
 
@@ -567,6 +576,20 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       if (schemaCandidate && (typeof schemaCandidate === 'object' || Array.isArray(schemaCandidate))) {
         set('schemaJson', schemaCandidate);
       }
+    }
+
+    // SEO keyword arrays — stored as JSON fields in Strapi
+    if (!isPartial || 'short_tail_keywords' in input || 'seoShortTailKeywords' in input) {
+      const val = input.seoShortTailKeywords ?? input.short_tail_keywords;
+      if (Array.isArray(val)) set('seoShortTailKeywords', val);
+    }
+    if (!isPartial || 'long_tail_keywords' in input || 'seoLongTailKeywords' in input) {
+      const val = input.seoLongTailKeywords ?? input.long_tail_keywords;
+      if (Array.isArray(val)) set('seoLongTailKeywords', val);
+    }
+    if (!isPartial || 'seoKeywords' in input || 'seoKeywordsJson' in input) {
+      const val = input.seoKeywordsJson ?? input.seoKeywords;
+      if (val && typeof val === 'object') set('seoKeywordsJson', val);
     }
 
     if (!isPartial || 'isFeatured' in input) set('isFeatured', parseBoolean(input.isFeatured));
