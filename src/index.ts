@@ -264,12 +264,21 @@ export default {
         'api::author.author.find',
         'api::category.category.find',
         'api::tag.tag.find',
+        // Upload plugin — required for featured image uploads
+        'plugin::upload.content-api.upload',
+        'plugin::upload.content-api.find',
+        'plugin::upload.content-api.findOne',
+        // Custom media endpoint
+        'api::media.media.find',
+        'api::media.media.create',
       ];
       await setRolePermissions('reporter', reporterAllowed);
 
       const editorAllowed = [
         ...reporterAllowed,
         'api::article.article.delete',
+        'plugin::upload.content-api.destroy',
+        'api::media.media.delete',
       ];
       await setRolePermissions('editor', editorAllowed);
     }
