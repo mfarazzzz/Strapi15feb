@@ -1338,7 +1338,10 @@ Sitemap: ${origin}/news-sitemap.xml
         const isUpsert = Boolean(existingEntity?.id);
         const data = await buildStrapiArticleData(input, origin, isUpsert);
         if (typeof data.slug === 'string' && data.slug.trim()) {
-          data.slug = await ensureUniqueSlug(data.slug, isUpsert ? Number(existingEntity.id) : undefined);
+          // For upserts, exclude the existing entity's numeric id so the slug
+          // uniqueness check doesn't flag the article's own slug as a conflict.
+          const excludeNumericId = isUpsert ? Number(existingEntity.id) : undefined;
+          data.slug = await ensureUniqueSlug(data.slug, excludeNumericId);
         }
         await validateFeaturedImageWidth(
           typeof data.featured_image === 'number' ? data.featured_image : undefined,
@@ -1376,7 +1379,22 @@ Sitemap: ${origin}/news-sitemap.xml
       const input = extractData(ctx.request.body);
       const data = await buildStrapiArticleData(input, origin, true);
       if (typeof data.slug === 'string' && data.slug.trim()) {
-        data.slug = await ensureUniqueSlug(data.slug, Number(id));
+        // Resolve the numeric entity ID so ensureUniqueSlug can correctly
+        // exclude the current article when checking for slug conflicts.
+        // ctx.params.id may be a documentId (string) in Strapi v5, so we
+        // look up the numeric id first.
+        let numericId = parseNumber(id);
+        if (!numericId) {
+          // id is a documentId — find the numeric id
+          const found = await es.findMany('api::article.article', {
+            filters: { documentId: id },
+            fields: ['id'],
+            limit: 1,
+            publicationState: 'preview',
+          });
+          numericId = Array.isArray(found) && found[0]?.id ? Number(found[0].id) : undefined;
+        }
+        data.slug = await ensureUniqueSlug(data.slug, numericId);
       }
       if (typeof data.featured_image === 'number') {
         await validateFeaturedImageWidth(data.featured_image);
