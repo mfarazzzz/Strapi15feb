@@ -34,7 +34,10 @@ export default factories.createCoreController('api::homepage.homepage' as any, (
       const [hero, editorial, ...categoryArticles] = await Promise.all([
         // Query 1: Hero articles
         es.findMany('api::article.article', {
-          filters: { isFeatured: true },
+          filters: { 
+            isFeatured: true,
+            publishedAt: { $notNull: true }
+          },
           sort: deterministicSort,
           populate,
           limit: 5,
@@ -43,6 +46,7 @@ export default factories.createCoreController('api::homepage.homepage' as any, (
         // Query 2: Editorial articles
         es.findMany('api::article.article', {
           filters: {
+            publishedAt: { $notNull: true },
             $or: [
               { category: { slug: 'editorials' } },
               { categories: { slug: 'editorials' } }
@@ -57,6 +61,7 @@ export default factories.createCoreController('api::homepage.homepage' as any, (
         ...categories.map(slug => 
           es.findMany('api::article.article', {
             filters: {
+              publishedAt: { $notNull: true },
               $or: [
                 { category: { slug } },
                 { categories: { slug } }
@@ -75,6 +80,22 @@ export default factories.createCoreController('api::homepage.homepage' as any, (
       categories.forEach((slug, index) => {
         sections[slug] = categoryArticles[index] || [];
       });
+
+      // Debug logging: Track article slugs and publishedAt values
+      if (process.env.NODE_ENV === 'development' || process.env.DEBUG_HOMEPAGE) {
+        strapi.log.debug('Homepage API - Hero articles:', 
+          hero.map((a: any) => ({ slug: a.slug, publishedAt: a.publishedAt }))
+        );
+        strapi.log.debug('Homepage API - Editorial articles:', 
+          editorial.map((a: any) => ({ slug: a.slug, publishedAt: a.publishedAt }))
+        );
+        categories.forEach((slug, index) => {
+          const articles = categoryArticles[index] || [];
+          strapi.log.debug(`Homepage API - ${slug} articles:`, 
+            articles.map((a: any) => ({ slug: a.slug, publishedAt: a.publishedAt }))
+          );
+        });
+      }
 
       return {
         hero,
