@@ -1,77 +1,78 @@
 /**
  * block-draft-public middleware
  *
- * Prevents draft content from leaking through public API endpoints.
- * Any GET request to /api/articles/* or /api/editorials/* that does NOT
- * carry a valid JWT will have publicationState forced to 'live'.
+ * Defence-in-depth layer that prevents draft content from leaking through
+ * public API endpoints, even if a controller has a bug.
  *
- * This is a defence-in-depth layer — the controllers already use
- * publicationState: 'live' for public routes, but this middleware
- * ensures no accidental regression can expose drafts.
+ * Strapi v5 uses `status: 'published' | 'draft'` (NOT publicationState).
+ * This middleware enforces status=published on all unauthenticated public
+ * requests to /api/articles and /api/editorials.
+ *
+ * It does NOT touch:
+ *  - Admin routes (/api/articles/admin/*)
+ *  - Authenticated requests (Bearer token present)
+ *  - Non-GET methods (mutations are handled by their own auth policies)
  */
 export default (_config: any, { strapi }: { strapi: any }) => {
   return async (ctx: any, next: any) => {
     const path: string = ctx.request?.path || '';
-    const method: string = (ctx.request?.method || ctx.method || 'GET').toUpperCase();
+    const method: string = (ctx.request?.method || 'GET').toUpperCase();
 
-    // Only intercept public GET requests to article/editorial endpoints
+    // Only intercept GET requests to public content endpoints
     if (method !== 'GET') {
       await next();
       return;
     }
 
-    const isPublicContentPath =
+    const isContentPath =
       path.startsWith('/api/articles') || path.startsWith('/api/editorials');
 
-    if (!isPublicContentPath) {
+    if (!isContentPath) {
       await next();
       return;
     }
 
-    // Allow authenticated requests (CMS admin, preview) to pass through unchanged
+    // Admin routes are exempt — they need draft access
+    if (path.includes('/admin/') || path.includes('/admin')) {
+      await next();
+      return;
+    }
+
+    // Authenticated requests (CMS users, preview with JWT) pass through
     const authHeader: string =
       ctx.request?.header?.authorization ||
       ctx.request?.headers?.authorization ||
-      ctx.headers?.authorization ||
       '';
-
-    const hasAuth = typeof authHeader === 'string' && authHeader.trim().startsWith('Bearer ');
+    const hasAuth = authHeader.trim().startsWith('Bearer ');
 
     if (hasAuth) {
       await next();
       return;
     }
 
-    // For unauthenticated requests: strip any publicationState=preview from query
-    // and block ?preview=true unless the path is explicitly the admin slug endpoint
-    const isAdminPath = path.includes('/admin/');
-    if (!isAdminPath) {
-      if (ctx.query?.publicationState === 'preview') {
-        delete ctx.query.publicationState;
+    // Validate preview token for unauthenticated preview requests
+    const previewSecret = process.env.PREVIEW_SECRET;
+    const requestToken = ctx.query?.token;
+    const tokenValid = previewSecret && requestToken && requestToken === previewSecret;
+
+    // Strip preview access if no valid token
+    if (ctx.query?.preview === 'true' && !tokenValid) {
+      ctx.query.preview = 'false';
+      delete ctx.query.token;
+    }
+
+    // Force status=published on unauthenticated non-preview requests
+    // This overrides any attempt to pass status=draft via query string
+    if (!tokenValid || ctx.query?.preview !== 'true') {
+      if (ctx.query?.status === 'draft') {
+        ctx.query.status = 'published';
       }
-      // Block preview mode on public routes
-      if (ctx.query?.preview === 'true' && !hasAuth) {
-        ctx.query.preview = 'false';
+      // Also strip legacy publicationState=preview
+      if (ctx.query?.publicationState === 'preview') {
+        ctx.query.publicationState = 'live';
       }
     }
 
     await next();
-
-    // Post-response: if the response contains articles, filter out any drafts
-    // that may have slipped through (publishedAt === null)
-    if (ctx.response?.status === 200 && ctx.response?.body) {
-      const body = ctx.response.body;
-      if (body?.data && Array.isArray(body.data)) {
-        body.data = body.data.filter((item: any) => {
-          // Keep item if it has publishedAt set (live) or if status is 'published'
-          const publishedAt = item?.publishedAt ?? item?.attributes?.publishedAt;
-          const status = item?.status ?? item?.attributes?.status;
-          if (publishedAt) return true;
-          if (status === 'published') return true;
-          return false;
-        });
-        ctx.response.body = body;
-      }
-    }
   };
 };

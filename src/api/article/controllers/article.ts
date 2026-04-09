@@ -10,6 +10,84 @@ const EDITORIAL_CATEGORY_SLUG = 'editorials';
 const EDITORIAL_CONTENT_TYPES = ['editorial', 'review', 'interview', 'opinion', 'special-report'] as const;
 const DEFAULT_SORT_FIELD = 'publishedAt';
 
+/**
+ * triggerFrontendRevalidation — SINGLE SOURCE OF CACHE INVALIDATION
+ *
+ * Called ONLY from the publish handler. Never from lifecycle hooks.
+ * This prevents duplicate revalidation calls on rapid saves / race conditions.
+ *
+ * Resolves all paths that need invalidation:
+ *   /:category/:slug  — the article page
+ *   /                 — homepage (breaking/featured may have changed)
+ *   /:category        — category listing page
+ *
+ * Fail-safe: errors are logged but never block the publish response.
+ */
+const triggerFrontendRevalidation = async (strapi: any, entity: any): Promise<void> => {
+  const slug = typeof entity?.slug === 'string' ? entity.slug.trim() : '';
+  const categorySlug = typeof entity?.category?.slug === 'string'
+    ? entity.category.slug.trim().toLowerCase()
+    : '';
+  const documentId = entity?.documentId || entity?.id || 'unknown';
+
+  // Build the set of paths to invalidate
+  const paths = new Set<string>(['/']);
+  if (categorySlug && slug) {
+    paths.add(`/${categorySlug}/${slug}`);
+    paths.add(`/${categorySlug}`);
+  } else if (slug) {
+    // Category missing — invalidate slug-only fallback
+    paths.add(`/${slug}`);
+  }
+
+  const revalidateSecret = String(process.env.REVALIDATE_SECRET ?? '').trim();
+  const revalidateBase = String(process.env.SITE_URL ?? SITE_URL).trim().replace(/\/+$/, '');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (revalidateSecret) headers['x-revalidate-token'] = revalidateSecret;
+
+  const pathList = Array.from(paths);
+
+  strapi.log.info(JSON.stringify({
+    event: 'REVALIDATION_TRIGGERED',
+    documentId,
+    slug,
+    categorySlug,
+    paths: pathList,
+    timestamp: new Date().toISOString(),
+  }));
+
+  try {
+    const res = await fetch(`${revalidateBase}/api/revalidate`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ slug, type: 'article', category: categorySlug, paths: pathList }),
+    });
+    if (!res.ok) {
+      strapi.log.warn(JSON.stringify({
+        event: 'REVALIDATION_FAILED',
+        documentId,
+        status: res.status,
+        paths: pathList,
+      }));
+    } else {
+      strapi.log.info(JSON.stringify({
+        event: 'REVALIDATION_SUCCESS',
+        documentId,
+        paths: pathList,
+        timestamp: new Date().toISOString(),
+      }));
+    }
+  } catch (err) {
+    // Non-fatal — publish already succeeded. Log and move on.
+    strapi.log.warn(JSON.stringify({
+      event: 'REVALIDATION_ERROR',
+      documentId,
+      error: err instanceof Error ? err.message : String(err),
+      paths: pathList,
+    }));
+  }
+};
+
 const LIST_FIELDS = [
   'title', 'short_headline', 'slug', 'excerpt', 'publishedAt', 'createdAt', 'updatedAt',
   'readTime', 'isFeatured', 'isBreaking', 'isEditorsPick', 'contentType', 'views', 'shares',
@@ -124,12 +202,18 @@ const normalizeArticle = (entity: any, origin: string, options: { excludeContent
     entity?.featured_image?.url || entity?.image?.url
       ? toAbsoluteUrl(origin, entity?.featured_image?.url || entity?.image?.url)
       : '';
-  // Use ONLY publishedAt (not createdAt) to determine published state.
-  // Strapi's Draft & Publish sets publishedAt when an article is published;
-  // drafts have publishedAt = null. Falling back to createdAt incorrectly
-  // marks every draft as published.
+
+  // Strapi v5 Document Service returns a `status` field directly on the entity:
+  //   'published' for the live version, 'draft' for the draft version.
+  // We use that as the primary signal. publishedAt is a secondary fallback
+  // for entities fetched via legacy entityService paths.
+  const docStatus: string = typeof entity?.status === 'string' ? entity.status : '';
   const publishedAt = entity?.publishedAt || '';
-  const status: 'draft' | 'published' = publishedAt ? 'published' : 'draft';
+  const status: 'draft' | 'published' =
+    docStatus === 'published' ? 'published'
+    : docStatus === 'draft' ? 'draft'
+    : publishedAt ? 'published'
+    : 'draft';
 
   const tags = Array.isArray(entity?.tags)
     ? (entity.tags as any[])
@@ -233,8 +317,14 @@ const normalizeArticle = (entity: any, origin: string, options: { excludeContent
     videoTitle: entity?.videoTitle ? String(entity.videoTitle) : undefined,
     jsonLd: structuredData,
     structuredData,
-    // Workflow
-    workflowStatus: entity?.workflowStatus ? String(entity.workflowStatus) : 'draft',
+    // Workflow — if the article is published (live), always report 'approved'
+    // regardless of the workflowStatus field value. The workflowStatus field
+    // tracks editorial workflow state and defaults to 'draft' in the schema,
+    // but it is NOT updated by the Document Service publish action. A published
+    // article is by definition approved, so we derive this from the status.
+    workflowStatus: status === 'published'
+      ? 'approved'
+      : (entity?.workflowStatus ? String(entity.workflowStatus) : 'draft'),
     workflowNote: entity?.workflowNote ? String(entity.workflowNote) : undefined,
     // SEO keyword arrays (stored as JSON in Strapi)
     seoShortTailKeywords: Array.isArray(entity?.seoShortTailKeywords) ? entity.seoShortTailKeywords : undefined,
@@ -988,17 +1078,9 @@ Sitemap: ${origin}/news-sitemap.xml
       const origin = ctx.request.origin || '';
 
       const filters = {
-        $and: [
-          {
-            $or: [
-              { category: { slug: { $eq: categorySlug } } },
-              { categories: { slug: { $eq: categorySlug } } },
-              // Removed: { category: { $eq: categorySlug } } — comparing a
-              // relation field to a string never matches in Strapi 5 and adds
-              // unnecessary query complexity.
-            ],
-          },
-          { publishedAt: { $notNull: true } },
+        $or: [
+          { category: { slug: { $eq: categorySlug } } },
+          { categories: { slug: { $eq: categorySlug } } },
         ],
       };
 
@@ -1098,7 +1180,9 @@ Sitemap: ${origin}/news-sitemap.xml
       const sort = q.sort && Array.isArray(q.sort) && q.sort.length > 0 
         ? q.sort 
         : [{ publishedAt: 'desc' }, { id: 'desc' }];
-      const publicationState = q.publicationState || 'live';
+      // SECURITY: Never allow publicationState to be overridden by query params
+      // on the public find endpoint. Always enforce 'live'.
+      const publicationState = 'live';
 
       const [entities, total] = await Promise.all([
         es.findMany('api::article.article', {
@@ -1174,6 +1258,9 @@ Sitemap: ${origin}/news-sitemap.xml
       }
 
       if (status === 'published') {
+        // Note: entityService does not support status: 'published' filter directly.
+        // publishedAt is the correct way to filter published articles in entityService.
+        // This is admin-only — never used for public API responses.
         filters.publishedAt = { $notNull: true };
       } else if (status === 'draft') {
         filters.publishedAt = { $null: true };
@@ -1285,27 +1372,53 @@ Sitemap: ${origin}/news-sitemap.xml
     async findBySlug(ctx) {
       const slug = ctx.params.slug;
       const origin = getPublicOrigin(ctx);
-      // ?preview=true returns draft version (requires auth via cms-role in practice,
-      // but the route is public — callers must pass a valid JWT for drafts to be useful)
-      const isPreview = ctx.query?.preview === 'true';
-      const publicationState = isPreview ? 'preview' : 'live';
 
-      const entities = await es.findMany('api::article.article', {
+      // Preview mode: ?preview=true&token=SECRET or authenticated request
+      const previewSecret = process.env.PREVIEW_SECRET;
+      const requestToken = parseString(ctx.query?.token);
+      const hasAuth = Boolean(ctx.state?.user);
+      const tokenValid = Boolean(previewSecret && requestToken && requestToken === previewSecret);
+      const isPreview = ctx.query?.preview === 'true' && (hasAuth || tokenValid);
+
+      const status = isPreview ? 'draft' : 'published';
+
+      strapi.log.debug(JSON.stringify({
+        type: 'findBySlug_request',
+        slug,
+        status,
+        isPreview,
+        hasAuth,
+        tokenValid,
+      }));
+
+      // Use Strapi v5 Document Service — status: 'published' | 'draft'
+      // This is the ONLY correct way to resolve versions in Strapi v5.
+      // Do NOT use publicationState or publishedAt filters.
+      const docService = (strapi as any).documents('api::article.article');
+
+      const results = await docService.findMany({
         filters: { slug },
+        status,
         populate: articlePopulate,
-        publicationState,
         limit: 1,
       });
-      const entity = (entities as any[])[0];
+
+      const entity = Array.isArray(results) ? results[0] : null;
+
+      strapi.log.debug(JSON.stringify({
+        type: 'findBySlug_result',
+        slug,
+        status,
+        found: Boolean(entity),
+        entityStatus: entity?.status,
+        documentId: entity?.documentId,
+      }));
+
       if (!entity) {
         ctx.notFound('Article not found');
         return;
       }
-      // For public (non-preview) requests, never return a draft
-      if (!isPreview && !entity.publishedAt) {
-        ctx.notFound('Article not found');
-        return;
-      }
+
       return normalizeArticle(entity, origin);
     },
 
@@ -1421,60 +1534,78 @@ Sitemap: ${origin}/news-sitemap.xml
       if (!id) { ctx.badRequest('Invalid id'); return; }
 
       const origin = getPublicOrigin(ctx);
-      const current = await es.findOne('api::article.article', id, {
-        publicationState: 'preview',
-        fields: ['id', 'documentId', 'publishedAt'],
-      });
+      const docService = (strapi as any).documents('api::article.article');
 
-      if (!current) { ctx.notFound('Article not found'); return; }
-
-      // No workflow gate here — the workflow-role policy on the route already
-      // enforces that only publishers (super_admin, admin, editor) can reach
-      // this endpoint. Auto-set workflowStatus to 'approved' so the article
-      // is correctly marked regardless of its previous state.
-      await es.update('api::article.article', id, {
-        data: { workflowStatus: 'approved' },
-      }).catch(() => void 0); // non-fatal if field doesn't exist yet
-
-      if (current.publishedAt) {
-        // Already published — return current state
-        const entity = await es.findOne('api::article.article', id, {
-          populate: articlePopulate,
-          publicationState: 'live',
+      // Resolve documentId — ctx.params.id may be a numeric id or a documentId string
+      let documentId: string | undefined;
+      const numericId = parseNumber(id);
+      if (numericId) {
+        // Numeric id: look up via entityService to get documentId
+        const found = await es.findOne('api::article.article', numericId, {
+          fields: ['id', 'documentId'],
+          publicationState: 'preview',
         });
-        return normalizeArticle(entity, origin);
+        if (!found) { ctx.notFound('Article not found'); return; }
+        documentId = parseString((found as any)?.documentId) || id;
+      } else {
+        // Already a documentId string
+        documentId = id;
       }
 
-      const documentId = parseString((current as any)?.documentId) || id;
+      strapi.log.info(JSON.stringify({
+        type: 'publish_attempt',
+        documentId,
+        numericId: numericId || undefined,
+        timestamp: new Date().toISOString(),
+      }));
 
-      // Strapi v5 Document Service API
-      // strapi.documents is a function that takes a UID and returns a service object
-      let published = false;
+      // Update workflowStatus to 'approved' on the draft version before publishing.
+      // The Document Service publish action does NOT update custom fields, so we
+      // must do this explicitly. This ensures the live version carries 'approved'.
+      // v5 update() always targets the draft version by default — no status param needed.
       try {
-        const docService = typeof (strapi as any).documents === 'function'
-          ? (strapi as any).documents('api::article.article')
-          : null;
-
-        if (docService && typeof docService.publish === 'function') {
-          // v5 Document Service: publish by documentId
-          await docService.publish({ documentId });
-          published = true;
-        }
-      } catch (docErr) {
-        strapi.log.warn('Document Service publish failed, falling back to entityService:', docErr);
-      }
-
-      if (!published) {
-        // Fallback: directly set publishedAt via entityService
-        await es.update('api::article.article', id, {
-          data: { publishedAt: new Date().toISOString() },
+        await docService.update({
+          documentId,
+          data: { workflowStatus: 'approved' },
         });
+      } catch (updateErr) {
+        // Non-fatal — log and continue. The publish will still succeed.
+        strapi.log.warn(JSON.stringify({
+          type: 'publish_workflow_update_failed',
+          documentId,
+          error: updateErr instanceof Error ? updateErr.message : String(updateErr),
+        }));
       }
 
-      const entity = await es.findOne('api::article.article', id, {
-        populate: articlePopulate,
-        publicationState: 'live',
-      });
+      // Publish via Document Service (Strapi v5 canonical API)
+      // This creates/updates the LIVE version from the current draft.
+      await docService.publish({ documentId });
+
+      strapi.log.info(JSON.stringify({
+        type: 'publish_success',
+        event: 'ARTICLE_PUBLISHED',
+        documentId,
+        timestamp: new Date().toISOString(),
+      }));
+
+      // Return the live version using Document Service with status: 'published'
+      // Correct v5 signature: findOne({ documentId, status, populate })
+      const entity = await docService.findOne({ documentId, status: 'published', populate: articlePopulate });
+      if (!entity) {
+        strapi.log.error(JSON.stringify({
+          type: 'publish_live_version_missing',
+          documentId,
+          message: 'Document published but live version not found — possible Document Service issue',
+        }));
+        ctx.internalServerError('Published but live version not found');
+        return;
+      }
+
+      // ─── SINGLE-SOURCE CACHE INVALIDATION ────────────────────────────────
+      // Revalidation fires ONCE here — never in lifecycle hooks.
+      // This prevents duplicate calls on rapid saves and race conditions.
+      void triggerFrontendRevalidation(strapi, entity);
+
       return normalizeArticle(entity, origin);
     },
 
@@ -1509,39 +1640,42 @@ Sitemap: ${origin}/news-sitemap.xml
 
     async unpublish(ctx) {
       const id = String(ctx.params.id || '').trim();
-      if (!id) {
-        ctx.badRequest('Invalid id');
-        return;
-      }
+      if (!id) { ctx.badRequest('Invalid id'); return; }
 
       const origin = getPublicOrigin(ctx);
-      const current = await es.findOne('api::article.article', id, {
-        publicationState: 'preview',
-        fields: ['id', 'documentId'],
-      });
-      const documentId = parseString((current as any)?.documentId) || id;
+      const docService = (strapi as any).documents('api::article.article');
 
-      let unpublished = false;
-      try {
-        const docService = typeof (strapi as any).documents === 'function'
-          ? (strapi as any).documents('api::article.article')
-          : null;
-
-        if (docService && typeof docService.unpublish === 'function') {
-          await docService.unpublish({ documentId });
-          unpublished = true;
-        }
-      } catch (docErr) {
-        strapi.log.warn('Document Service unpublish failed, falling back to entityService:', docErr);
+      // Resolve documentId
+      let documentId: string | undefined;
+      const numericId = parseNumber(id);
+      if (numericId) {
+        const found = await es.findOne('api::article.article', numericId, {
+          fields: ['id', 'documentId'],
+          publicationState: 'preview',
+        });
+        if (!found) { ctx.notFound('Article not found'); return; }
+        documentId = parseString((found as any)?.documentId) || id;
+      } else {
+        documentId = id;
       }
 
-      if (!unpublished) {
-        await es.update('api::article.article', id, { data: { publishedAt: null } });
-      }
-      const entity = await es.findOne('api::article.article', id, {
-        populate: articlePopulate,
-        publicationState: 'preview',
-      });
+      strapi.log.info(JSON.stringify({
+        type: 'unpublish_attempt',
+        documentId,
+        timestamp: new Date().toISOString(),
+      }));
+
+      // Unpublish via Document Service (Strapi v5 canonical API)
+      await docService.unpublish({ documentId });
+
+      strapi.log.info(JSON.stringify({
+        type: 'unpublish_success',
+        documentId,
+        timestamp: new Date().toISOString(),
+      }));
+
+      // Return the draft version
+      const entity = await docService.findOne({ documentId, status: 'draft', populate: articlePopulate });
       return normalizeArticle(entity, origin);
     },
 

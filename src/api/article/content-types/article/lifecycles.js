@@ -112,7 +112,14 @@ const resolveDiscoverEligibility = async (strapi, data, existing) => {
 const ensureUniqueSlug = async (strapi, slug, excludeId) => {
   if (!slug) return;
   const filters = excludeId ? { slug, id: { $ne: excludeId } } : { slug };
-  const existing = await strapi.entityService.findMany(ARTICLE_UID, { filters, limit: 1 });
+  // Must use publicationState: 'preview' to check BOTH draft and live versions.
+  // Without this, Strapi v5 entityService defaults to 'live' and misses drafts,
+  // allowing duplicate slugs across draft/live versions.
+  const existing = await strapi.entityService.findMany(ARTICLE_UID, {
+    filters,
+    limit: 1,
+    publicationState: 'preview',
+  });
   if (Array.isArray(existing) && existing.length > 0) {
     throw new Error('Slug already exists');
   }
@@ -386,33 +393,13 @@ module.exports = {
 
   async afterCreate(event) {
     const { result } = event;
-    if (!result?.publishedAt) return;
-    const publishDiagnostics = String(process.env.PUBLISH_DIAGNOSTICS ?? '').trim().toLowerCase();
-    if (publishDiagnostics === '1' || publishDiagnostics === 'true' || publishDiagnostics === 'yes') {
-      try {
-        strapi.log.info(
-          JSON.stringify({
-            type: 'publish_event',
-            action: 'afterCreate',
-            id: result?.id,
-            slug: result?.slug,
-            publishedAt: result?.publishedAt,
-          }),
-        );
-      } catch {
-        void 0;
-      }
-    }
+    // afterCreate fires for both draft creates and publish actions in Strapi v5.
+    // Revalidation is handled exclusively by the publish controller handler.
+    // This hook only handles: sitemap cache clearing + Google Indexing.
+    const isPublished = result?.status === 'published' || Boolean(result?.publishedAt);
+    if (!isPublished) return;
+
     await clearSitemapCache();
-    try {
-      await fetch('https://rampurnews.com/api/revalidate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug: result.slug, type: 'article' }),
-      });
-    } catch {
-      void 0;
-    }
     try {
       const url = await resolveArticleUrlForIndexing(result);
       if (url) {
@@ -425,34 +412,12 @@ module.exports = {
 
   async afterUpdate(event) {
     const { result } = event;
-    if (!result?.publishedAt) return;
-    const publishDiagnostics = String(process.env.PUBLISH_DIAGNOSTICS ?? '').trim().toLowerCase();
-    if (publishDiagnostics === '1' || publishDiagnostics === 'true' || publishDiagnostics === 'yes') {
-      try {
-        strapi.log.info(
-          JSON.stringify({
-            type: 'publish_event',
-            action: 'afterUpdate',
-            id: result?.id,
-            slug: result?.slug,
-            publishedAt: result?.publishedAt,
-            wasPublished: Boolean(event?.state?.wasPublished),
-          }),
-        );
-      } catch {
-        void 0;
-      }
-    }
+    // Revalidation is handled exclusively by the publish controller handler.
+    // This hook only handles: sitemap cache clearing + Google Indexing.
+    const isPublished = result?.status === 'published' || Boolean(result?.publishedAt);
+    if (!isPublished) return;
+
     await clearSitemapCache();
-    try {
-      await fetch('https://rampurnews.com/api/revalidate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug: result.slug, type: 'article' }),
-      });
-    } catch {
-      void 0;
-    }
     try {
       const wasPublished = Boolean(event?.state?.wasPublished);
       if (!wasPublished) {
