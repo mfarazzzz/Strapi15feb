@@ -203,17 +203,20 @@ const normalizeArticle = (entity: any, origin: string, options: { excludeContent
       ? toAbsoluteUrl(origin, entity?.featured_image?.url || entity?.image?.url)
       : '';
 
-  // Strapi v5 Document Service returns a `status` field directly on the entity:
-  //   'published' for the live version, 'draft' for the draft version.
-  // We use that as the primary signal. publishedAt is a secondary fallback
-  // for entities fetched via legacy entityService paths.
-  const docStatus: string = typeof entity?.status === 'string' ? entity.status : '';
+  // Use publishedAt as the single source of truth for published/draft state.
+  //
+  // Why NOT entity.status:
+  //   - entityService (used by find, featured, breaking, byCategory, etc.) returns
+  //     entity.status = 'draft' even for published articles when fetched with
+  //     publicationState: 'live'. The `status` field reflects the document's draft
+  //     version state, not whether the live version exists.
+  //   - Document Service findMany with status: 'published' also returns entities
+  //     where entity.status may be 'draft' depending on Strapi version/config.
+  //
+  // publishedAt is always null for drafts and always set for published articles,
+  // making it the only reliable signal across both entityService and Document Service.
   const publishedAt = entity?.publishedAt || '';
-  const status: 'draft' | 'published' =
-    docStatus === 'published' ? 'published'
-    : docStatus === 'draft' ? 'draft'
-    : publishedAt ? 'published'
-    : 'draft';
+  const status: 'draft' | 'published' = publishedAt ? 'published' : 'draft';
 
   const tags = Array.isArray(entity?.tags)
     ? (entity.tags as any[])
