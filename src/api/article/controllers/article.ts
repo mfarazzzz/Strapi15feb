@@ -1394,9 +1394,8 @@ Sitemap: ${origin}/news-sitemap.xml
         tokenValid,
       }));
 
-      // Use Strapi v5 Document Service — status: 'published' | 'draft'
-      // This is the ONLY correct way to resolve versions in Strapi v5.
-      // Do NOT use publicationState or publishedAt filters.
+      // PRIMARY: Strapi v5 Document Service — status: 'published' | 'draft'
+      // This works for articles published via the Document Service publish() action.
       const docService = (strapi as any).documents('api::article.article');
 
       const results = await docService.findMany({
@@ -1406,7 +1405,33 @@ Sitemap: ${origin}/news-sitemap.xml
         limit: 1,
       });
 
-      const entity = Array.isArray(results) ? results[0] : null;
+      let entity = Array.isArray(results) ? results[0] : null;
+
+      // FALLBACK: entityService with publicationState:'live'
+      // Required for articles whose publishedAt was set directly (SQL, migration,
+      // or entityService.update) without going through Document Service publish().
+      // In those cases the Document Service has no live version, but the article
+      // IS published (publishedAt is non-null) and must be served.
+      if (!entity && !isPreview) {
+        const fallbackResults = await es.findMany('api::article.article', {
+          filters: { slug },
+          populate: articlePopulate,
+          publicationState: 'live',
+          limit: 1,
+        });
+        const fallback = Array.isArray(fallbackResults) ? fallbackResults[0] : null;
+        // Only use the fallback if publishedAt is actually set — belt-and-suspenders
+        // guard so we never accidentally serve a draft via this path.
+        if (fallback?.publishedAt) {
+          entity = fallback;
+          strapi.log.debug(JSON.stringify({
+            type: 'findBySlug_fallback_used',
+            slug,
+            entityId: fallback.id,
+            documentId: fallback.documentId,
+          }));
+        }
+      }
 
       strapi.log.debug(JSON.stringify({
         type: 'findBySlug_result',
