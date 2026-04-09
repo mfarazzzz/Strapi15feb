@@ -25,6 +25,7 @@ export default ({ env }) => {
         thresholdMs: env.int('SLOW_REQUEST_THRESHOLD_MS', 1000),
       },
     },
+    'global::block-draft-public',
     'strapi::errors',
     {
       name: 'strapi::security',

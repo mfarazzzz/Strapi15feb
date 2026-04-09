@@ -1285,14 +1285,24 @@ Sitemap: ${origin}/news-sitemap.xml
     async findBySlug(ctx) {
       const slug = ctx.params.slug;
       const origin = getPublicOrigin(ctx);
+      // ?preview=true returns draft version (requires auth via cms-role in practice,
+      // but the route is public — callers must pass a valid JWT for drafts to be useful)
+      const isPreview = ctx.query?.preview === 'true';
+      const publicationState = isPreview ? 'preview' : 'live';
+
       const entities = await es.findMany('api::article.article', {
         filters: { slug },
         populate: articlePopulate,
-        publicationState: 'live',
+        publicationState,
         limit: 1,
       });
       const entity = (entities as any[])[0];
       if (!entity) {
+        ctx.notFound('Article not found');
+        return;
+      }
+      // For public (non-preview) requests, never return a draft
+      if (!isPreview && !entity.publishedAt) {
         ctx.notFound('Article not found');
         return;
       }
@@ -1436,18 +1446,29 @@ Sitemap: ${origin}/news-sitemap.xml
       }
 
       const documentId = parseString((current as any)?.documentId) || id;
-      const docsFactory = (strapi as any).documents;
-      const docs = typeof docsFactory === 'function' ? docsFactory.call(strapi, 'api::article.article') : null;
 
+      // Strapi v5 Document Service API
+      // strapi.documents is a function that takes a UID and returns a service object
+      let published = false;
       try {
-        if (docs && typeof docs.publish === 'function') {
-          await docs.publish({ documentId });
-        } else {
-          await es.update('api::article.article', id, { data: { publishedAt: new Date().toISOString() } });
+        const docService = typeof (strapi as any).documents === 'function'
+          ? (strapi as any).documents('api::article.article')
+          : null;
+
+        if (docService && typeof docService.publish === 'function') {
+          // v5 Document Service: publish by documentId
+          await docService.publish({ documentId });
+          published = true;
         }
-      } catch (error) {
-        strapi.log.error('Publish failed:', error);
-        throw error;
+      } catch (docErr) {
+        strapi.log.warn('Document Service publish failed, falling back to entityService:', docErr);
+      }
+
+      if (!published) {
+        // Fallback: directly set publishedAt via entityService
+        await es.update('api::article.article', id, {
+          data: { publishedAt: new Date().toISOString() },
+        });
       }
 
       const entity = await es.findOne('api::article.article', id, {
@@ -1499,11 +1520,22 @@ Sitemap: ${origin}/news-sitemap.xml
         fields: ['id', 'documentId'],
       });
       const documentId = parseString((current as any)?.documentId) || id;
-      const docsFactory = (strapi as any).documents;
-      const docs = typeof docsFactory === 'function' ? docsFactory.call(strapi, 'api::article.article') : null;
-      if (docs && typeof docs.unpublish === 'function') {
-        await docs.unpublish({ documentId });
-      } else {
+
+      let unpublished = false;
+      try {
+        const docService = typeof (strapi as any).documents === 'function'
+          ? (strapi as any).documents('api::article.article')
+          : null;
+
+        if (docService && typeof docService.unpublish === 'function') {
+          await docService.unpublish({ documentId });
+          unpublished = true;
+        }
+      } catch (docErr) {
+        strapi.log.warn('Document Service unpublish failed, falling back to entityService:', docErr);
+      }
+
+      if (!unpublished) {
         await es.update('api::article.article', id, { data: { publishedAt: null } });
       }
       const entity = await es.findOne('api::article.article', id, {
