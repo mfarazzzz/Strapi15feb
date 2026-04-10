@@ -27,8 +27,11 @@ export default ({ env }) => {
     },
     'global::block-draft-public',
     'strapi::errors',
+    // NOTE: strapi::rateLimit does NOT exist in Strapi v5 — it was removed from core.
+    // Using it causes: "Middleware strapi::rateLimit: middlewareFactory is not a function"
+    // We use a custom Koa-compatible rate limiter instead (src/middlewares/rate-limit.ts).
     {
-      name: 'strapi::rateLimit',
+      name: 'global::rate-limit',
       config: {
         interval: env.int('RATE_LIMIT_INTERVAL', 60000),
         max: env.int('RATE_LIMIT_MAX', 200),
