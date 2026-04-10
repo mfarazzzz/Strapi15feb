@@ -24,12 +24,4 @@ export default () => ({
     enabled: true,
     resolve: './src/plugins/rbac-manager',
   },
-  // DISABLED: strapi-plugin-auto-slug-manager-a-mi13 registers a beforeUpdate
-  // lifecycle hook that regenerates the slug from the title on EVERY save.
-  // This overwrites any manual slug edits and causes all article saves to
-  // appear to "revert" because the slug (and related fields) get overwritten.
-  // Slug generation is handled correctly by the custom article controller.
-  'auto-slug-manager': {
-    enabled: false,
-  },
 });
