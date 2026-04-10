@@ -1,6 +1,147 @@
 // import type { Core } from '@strapi/strapi';
 import { monitorEventLoopDelay } from 'perf_hooks';
 
+// ─── Article Content Manager Layout ──────────────────────────────────────────
+//
+// Persists the edit-view layout to core_store on every bootstrap so it
+// survives re-deploys and fresh environments.
+//
+// Layout rules:
+//   - Fields NOT listed in the edit layout are hidden from the form.
+//   - Hidden from schema (pluginOptions visible:false): views, shares,
+//     categories, seoShortTailKeywords, seoLongTailKeywords, seoKeywordsJson,
+//     schemaJson — these are AI-generated or API-managed, editors never touch them.
+//   - Each inner array is a ROW; { name, size } where size is 1–12 (12 = full width).
+//
+// Panel grouping is achieved by the order of rows — Strapi v5 does not support
+// named tabs in core_store layout, but the logical sections are clearly separated.
+
+const ARTICLE_CM_CONFIG = {
+  uid: 'api::article.article',
+  settings: {
+    bulkable: true,
+    filterable: true,
+    searchable: true,
+    pageSize: 25,
+    mainField: 'title',
+    defaultSortBy: 'id',
+    defaultSortOrder: 'DESC',
+  },
+  metadatas: {
+    id:              { edit: {}, list: { label: 'ID',          searchable: false, sortable: true  } },
+    title:           { edit: { label: 'शीर्षक (Title)',        description: '', placeholder: 'समाचार का शीर्षक लिखें', visible: true, editable: true }, list: { label: 'Title',          searchable: true,  sortable: true  } },
+    slug:            { edit: { label: 'Slug',                  description: 'Auto-generated from title. Edit only if needed.', placeholder: '', visible: true, editable: true }, list: { label: 'Slug',           searchable: false, sortable: false } },
+    short_headline:  { edit: { label: 'Short Headline',        description: '55–110 characters. Used for Google News.', placeholder: '', visible: true, editable: true }, list: { label: 'Short Headline',  searchable: false, sortable: false } },
+    excerpt:         { edit: { label: 'Excerpt',               description: 'Brief summary shown in listings.', placeholder: '', visible: true, editable: true }, list: { label: 'Excerpt',         searchable: false, sortable: false } },
+    workflowStatus:  { edit: { label: 'Workflow Status',       description: '', placeholder: '', visible: true, editable: true }, list: { label: 'Status',          searchable: false, sortable: true  } },
+    news_category:   { edit: { label: 'News Category',         description: 'Editorial classification (Local, National, etc.)', placeholder: '', visible: true, editable: true }, list: { label: 'News Category',   searchable: false, sortable: true  } },
+    content:         { edit: { label: 'Content',               description: '', placeholder: '', visible: true, editable: true }, list: { label: 'Content',         searchable: false, sortable: false } },
+    featured_image:  { edit: { label: 'Featured Image',        description: 'Min 1200×630px for Google Discover.', placeholder: '', visible: true, editable: true }, list: { label: 'Image',           searchable: false, sortable: false } },
+    category:        { edit: { label: 'Category',              description: '', placeholder: '', visible: true, editable: true }, list: { label: 'Category',        searchable: false, sortable: false } },
+    author:          { edit: { label: 'Author',                description: '', placeholder: '', visible: true, editable: true }, list: { label: 'Author',          searchable: false, sortable: false } },
+    tags:            { edit: { label: 'Tags',                  description: '', placeholder: '', visible: true, editable: true }, list: { label: 'Tags',            searchable: false, sortable: false } },
+    location:        { edit: { label: 'Location',              description: 'City or area (e.g. Rampur, Moradabad)', placeholder: 'e.g. Rampur', visible: true, editable: true }, list: { label: 'Location',        searchable: false, sortable: false } },
+    focus_keyword:   { edit: { label: 'Focus Keyword',         description: 'Primary SEO keyword for this article.', placeholder: '', visible: true, editable: true }, list: { label: 'Focus Keyword',   searchable: false, sortable: false } },
+    contentType:     { edit: { label: 'Content Type',          description: '', placeholder: '', visible: true, editable: true }, list: { label: 'Content Type',    searchable: false, sortable: false } },
+    workflowNote:    { edit: { label: 'Workflow Note',         description: 'Internal note for editors/publishers.', placeholder: '', visible: true, editable: true }, list: { label: 'Workflow Note',   searchable: false, sortable: false } },
+    meta_description:{ edit: { label: 'Meta Description',      description: '140–160 characters. Shown in Google search results.', placeholder: 'ताज़ा खबरें पढ़ें | रामपुर न्यूज़', visible: true, editable: true }, list: { label: 'Meta Desc',       searchable: false, sortable: false } },
+    seoTitle:        { edit: { label: 'SEO Title',             description: '50–70 characters. Overrides title in search results.', placeholder: 'e.g. रामपुर में नई सड़क | Rampur News', visible: true, editable: true }, list: { label: 'SEO Title',       searchable: false, sortable: false } },
+    canonicalUrl:    { edit: { label: 'Canonical URL',         description: 'Leave blank to auto-generate. Only set if this article is a copy of another URL.', placeholder: 'https://rampurnews.com/category/slug', visible: true, editable: true }, list: { label: 'Canonical URL',   searchable: false, sortable: false } },
+    ogTitle:         { edit: { label: 'OG Title',              description: 'Facebook/WhatsApp share title. Max 70 chars.', placeholder: '', visible: true, editable: true }, list: { label: 'OG Title',        searchable: false, sortable: false } },
+    ogDescription:   { edit: { label: 'OG Description',        description: 'Facebook/WhatsApp share description. Max 200 chars.', placeholder: '', visible: true, editable: true }, list: { label: 'OG Desc',         searchable: false, sortable: false } },
+    ogImage:         { edit: { label: 'OG Image',              description: 'Custom share image. Defaults to featured image if blank.', placeholder: '', visible: true, editable: true }, list: { label: 'OG Image',        searchable: false, sortable: false } },
+    newsKeywords:    { edit: { label: 'News Keywords',         description: 'Comma-separated keywords for Google News.', placeholder: '', visible: true, editable: true }, list: { label: 'News Keywords',   searchable: false, sortable: false } },
+    isBreaking:      { edit: { label: 'Breaking News',         description: '', placeholder: '', visible: true, editable: true }, list: { label: 'Breaking',        searchable: false, sortable: false } },
+    isFeatured:      { edit: { label: 'Featured',              description: '', placeholder: '', visible: true, editable: true }, list: { label: 'Featured',        searchable: false, sortable: false } },
+    isEditorsPick:   { edit: { label: "Editor's Pick",         description: '', placeholder: '', visible: true, editable: true }, list: { label: "Editor's Pick",   searchable: false, sortable: false } },
+    discoverEligible:{ edit: { label: 'Discover Eligible',     description: 'Mark eligible for Google Discover feed.', placeholder: '', visible: true, editable: true }, list: { label: 'Discover',        searchable: false, sortable: false } },
+    heroPriority:    { edit: { label: 'Hero Priority',         description: 'Lower number = higher priority on homepage hero.', placeholder: '', visible: true, editable: true }, list: { label: 'Hero Priority',   searchable: false, sortable: false } },
+    videoType:       { edit: { label: 'Video Type',            description: '', placeholder: '', visible: true, editable: true }, list: { label: 'Video Type',      searchable: false, sortable: false } },
+    videoUrl:        { edit: { label: 'Video URL',             description: 'YouTube URL or local video path.', placeholder: 'https://youtube.com/watch?v=...', visible: true, editable: true }, list: { label: 'Video URL',       searchable: false, sortable: false } },
+    videoTitle:      { edit: { label: 'Video Title',           description: '', placeholder: '', visible: true, editable: true }, list: { label: 'Video Title',     searchable: false, sortable: false } },
+    readTime:        { edit: { label: 'Read Time',             description: 'e.g. "3 min". Auto-calculated if blank.', placeholder: '3 min', visible: true, editable: true }, list: { label: 'Read Time',       searchable: false, sortable: false } },
+    // Hidden fields — managed by API/AI, not shown to editors
+    views:                { edit: { visible: false }, list: { label: 'Views',  searchable: false, sortable: true  } },
+    shares:               { edit: { visible: false }, list: { label: 'Shares', searchable: false, sortable: false } },
+    categories:           { edit: { visible: false }, list: { label: 'Categories', searchable: false, sortable: false } },
+    seoShortTailKeywords: { edit: { visible: false }, list: { label: 'Short Tail KW', searchable: false, sortable: false } },
+    seoLongTailKeywords:  { edit: { visible: false }, list: { label: 'Long Tail KW',  searchable: false, sortable: false } },
+    seoKeywordsJson:      { edit: { visible: false }, list: { label: 'SEO KW JSON',   searchable: false, sortable: false } },
+    schemaJson:           { edit: { visible: false }, list: { label: 'Schema JSON',   searchable: false, sortable: false } },
+    publishedAt:          { edit: { label: 'Published At', visible: false }, list: { label: 'Published', searchable: false, sortable: true } },
+    createdAt:            { edit: { visible: false }, list: { label: 'Created',   searchable: false, sortable: true  } },
+    updatedAt:            { edit: { visible: false }, list: { label: 'Updated',   searchable: false, sortable: true  } },
+  },
+  layouts: {
+    // List view columns
+    list: ['id', 'title', 'workflowStatus', 'news_category', 'category', 'author', 'publishedAt'],
+
+    // Edit view — each inner array is a ROW, size 1–12 (12 = full width)
+    // ── SECTION 1: Core Content ──────────────────────────────────────────────
+    edit: [
+      [{ name: 'title',          size: 12 }],
+      [{ name: 'slug',           size: 6  }, { name: 'short_headline', size: 6 }],
+      [{ name: 'excerpt',        size: 12 }],
+      [{ name: 'workflowStatus', size: 4  }, { name: 'news_category',  size: 4 }, { name: 'contentType', size: 4 }],
+      [{ name: 'content',        size: 12 }],
+      [{ name: 'featured_image', size: 12 }],
+
+      // ── SECTION 2: Categorization & Meta ──────────────────────────────────
+      [{ name: 'category',       size: 6  }, { name: 'author',         size: 6 }],
+      [{ name: 'tags',           size: 12 }],
+      [{ name: 'location',       size: 6  }, { name: 'focus_keyword',  size: 6 }],
+
+      // ── SECTION 3: SEO ────────────────────────────────────────────────────
+      [{ name: 'seoTitle',       size: 6  }, { name: 'meta_description', size: 6 }],
+      [{ name: 'canonicalUrl',   size: 12 }],
+      [{ name: 'ogTitle',        size: 6  }, { name: 'ogDescription',  size: 6 }],
+      [{ name: 'ogImage',        size: 12 }],
+      [{ name: 'newsKeywords',   size: 12 }],
+
+      // ── SECTION 4: Publishing & Flags ─────────────────────────────────────
+      [{ name: 'workflowNote',   size: 12 }],
+      [
+        { name: 'isBreaking',      size: 3 },
+        { name: 'isFeatured',      size: 3 },
+        { name: 'isEditorsPick',   size: 3 },
+        { name: 'discoverEligible',size: 3 },
+      ],
+      [{ name: 'videoType',      size: 4  }, { name: 'videoUrl',       size: 8 }],
+      [{ name: 'videoTitle',     size: 12 }],
+      [{ name: 'readTime',       size: 6  }, { name: 'heroPriority',   size: 6 }],
+    ],
+  },
+};
+
+async function syncArticleCMLayout(strapi: any): Promise<void> {
+  const key = 'plugin_content_manager_configuration_content_types::api::article.article';
+  try {
+    const store = strapi.store({ type: 'plugin', name: 'content-manager' });
+    await store.set({ key: 'configuration_content_types::api::article.article', value: ARTICLE_CM_CONFIG });
+    strapi.log.info('[bootstrap] Article Content Manager layout synced to core_store.');
+  } catch (err) {
+    // Fallback: write directly to core_store via knex
+    try {
+      const value = JSON.stringify(ARTICLE_CM_CONFIG);
+      const existing = await strapi.db.connection('core_store').where({ key }).first();
+      if (existing) {
+        await strapi.db.connection('core_store').where({ key }).update({ value });
+      } else {
+        await strapi.db.connection('core_store').insert({
+          key,
+          value,
+          type: 'object',
+          environment: null,
+          tag: null,
+        });
+      }
+      strapi.log.info('[bootstrap] Article Content Manager layout written to core_store (fallback path).');
+    } catch (fallbackErr) {
+      strapi.log.warn('[bootstrap] Could not sync article CM layout: ' + String(fallbackErr instanceof Error ? fallbackErr.message : fallbackErr));
+    }
+  }
+}
+
 export default {
   /**
    * An asynchronous register function that runs before
@@ -18,10 +159,14 @@ export default {
    * run jobs, or perform some special logic.
    */
   async bootstrap({ strapi }: { strapi: any }) {
+    // Sync article Content Manager layout on every startup
+    await syncArticleCMLayout(strapi);
+
     const obsEnabledRaw = String(process.env.OBSERVABILITY_ENABLED ?? 'true').trim().toLowerCase();
     const obsEnabled = obsEnabledRaw !== '0' && obsEnabledRaw !== 'false' && obsEnabledRaw !== 'no';
     if (obsEnabled && !(globalThis as any).__observabilityInstalled) {
       (globalThis as any).__observabilityInstalled = true;
+
 
       const loopDelay = monitorEventLoopDelay({ resolution: 20 });
       loopDelay.enable();

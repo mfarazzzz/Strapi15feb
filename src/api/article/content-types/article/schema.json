@@ -32,9 +32,7 @@
       "required": true,
       "unique": true,
       "pluginOptions": {
-        "content-manager": {
-          "editable": true
-        }
+        "content-manager": { "editable": true }
       }
     },
     "short_headline": {
@@ -44,6 +42,16 @@
     },
     "excerpt": {
       "type": "text",
+      "required": true
+    },
+    "workflowStatus": {
+      "type": "enumeration",
+      "enum": ["draft", "submitted", "approved", "rejected"],
+      "default": "draft"
+    },
+    "news_category": {
+      "type": "enumeration",
+      "enum": ["Local", "State", "National", "Politics", "Crime", "Education", "Sports", "Business"],
       "required": true
     },
     "content": {
@@ -63,11 +71,6 @@
       "inversedBy": "articles",
       "required": true
     },
-    "news_category": {
-      "type": "enumeration",
-      "enum": ["Local", "State", "National", "Politics", "Crime", "Education", "Sports", "Business"],
-      "required": true
-    },
     "author": {
       "type": "relation",
       "relation": "manyToOne",
@@ -81,16 +84,19 @@
       "target": "api::tag.tag",
       "inversedBy": "articles"
     },
-    "categories": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::category.category"
-    },
     "location": {
       "type": "string"
     },
     "focus_keyword": {
       "type": "string"
+    },
+    "contentType": {
+      "type": "enumeration",
+      "enum": ["news", "editorial", "review", "interview", "opinion", "special-report"],
+      "default": "news"
+    },
+    "workflowNote": {
+      "type": "text"
     },
     "meta_description": {
       "type": "string",
@@ -103,18 +109,6 @@
     },
     "canonicalUrl": {
       "type": "string"
-    },
-    "seoShortTailKeywords": {
-      "type": "json"
-    },
-    "seoLongTailKeywords": {
-      "type": "json"
-    },
-    "seoKeywordsJson": {
-      "type": "json"
-    },
-    "schemaJson": {
-      "type": "json"
     },
     "ogTitle": {
       "type": "string",
@@ -130,19 +124,6 @@
       "allowedTypes": ["images"]
     },
     "newsKeywords": {
-      "type": "text"
-    },
-    "contentType": {
-      "type": "enumeration",
-      "enum": ["news", "editorial", "review", "interview", "opinion", "special-report"],
-      "default": "news"
-    },
-    "workflowStatus": {
-      "type": "enumeration",
-      "enum": ["draft", "submitted", "approved", "rejected"],
-      "default": "draft"
-    },
-    "workflowNote": {
       "type": "text"
     },
     "isBreaking": {
@@ -181,11 +162,49 @@
     },
     "views": {
       "type": "integer",
-      "default": 0
+      "default": 0,
+      "pluginOptions": {
+        "content-manager": { "visible": false }
+      }
     },
     "shares": {
       "type": "integer",
-      "default": 0
+      "default": 0,
+      "pluginOptions": {
+        "content-manager": { "visible": false }
+      }
+    },
+    "categories": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::category.category",
+      "pluginOptions": {
+        "content-manager": { "visible": false }
+      }
+    },
+    "seoShortTailKeywords": {
+      "type": "json",
+      "pluginOptions": {
+        "content-manager": { "visible": false }
+      }
+    },
+    "seoLongTailKeywords": {
+      "type": "json",
+      "pluginOptions": {
+        "content-manager": { "visible": false }
+      }
+    },
+    "seoKeywordsJson": {
+      "type": "json",
+      "pluginOptions": {
+        "content-manager": { "visible": false }
+      }
+    },
+    "schemaJson": {
+      "type": "json",
+      "pluginOptions": {
+        "content-manager": { "visible": false }
+      }
     }
   }
 }
