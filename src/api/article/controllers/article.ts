@@ -596,22 +596,87 @@ export default factories.createCoreController('api::article.article', ({ strapi 
   const resolveTagIds = async (value: unknown): Promise<number[] | undefined> => {
     if (value === undefined) return undefined;
     if (!Array.isArray(value)) return undefined;
-    const names = (value as any[])
-      .map((t) => (typeof t === 'string' ? t.trim() : ''))
-      .filter(Boolean);
-    if (names.length === 0) return [];
+
+    // Normalise each entry to { name, slug, nameHindi }
+    // Accepts both:
+    //   - { name, slug } objects  (new format from AI pipeline)
+    //   - plain strings           (legacy format — name = slug = the string)
+    type TagInput = { name: string; slug: string; nameHindi: string };
+    const tagInputs: TagInput[] = [];
+    for (const t of value as any[]) {
+      if (t && typeof t === 'object' && !Array.isArray(t)) {
+        const name = typeof t.name === 'string' ? t.name.trim() : '';
+        const slug = typeof t.slug === 'string' ? t.slug.trim() : '';
+        if (!name && !slug) continue;
+        // nameHindi: use name if it contains Devanagari, otherwise empty
+        const hasDevanagari = /[\u0900-\u097F]/.test(name);
+        tagInputs.push({
+          name: name || slug,
+          slug: slug || name,
+          nameHindi: hasDevanagari ? name : '',
+        });
+      } else if (typeof t === 'string') {
+        const s = t.trim();
+        if (!s) continue;
+        tagInputs.push({ name: s, slug: s, nameHindi: '' });
+      }
+    }
+    if (tagInputs.length === 0) return [];
 
     const ids: number[] = [];
-    for (const name of names) {
-      const existing = await es.findMany('api::tag.tag', { filters: { name }, limit: 1 });
-      const match = Array.isArray(existing) ? existing[0] : null;
+    for (const input of tagInputs) {
+      // Look up by slug first (most reliable unique key), then by name
+      let existing = await es.findMany('api::tag.tag', {
+        filters: { slug: input.slug },
+        limit: 1,
+      });
+      let match = Array.isArray(existing) ? existing[0] : null;
+
+      if (!match) {
+        existing = await es.findMany('api::tag.tag', {
+          filters: { name: input.name },
+          limit: 1,
+        });
+        match = Array.isArray(existing) ? existing[0] : null;
+      }
+
       if (match?.id) {
+        // Update nameHindi if it was previously empty and we now have a Hindi name
+        if (input.nameHindi && !match.nameHindi) {
+          await es.update('api::tag.tag', match.id, {
+            data: { nameHindi: input.nameHindi },
+          });
+        }
         ids.push(Number(match.id));
         continue;
       }
-      const created = await es.create('api::tag.tag', { data: { name, nameHindi: name } });
+
+      // Create new tag — pass slug explicitly so Strapi's UID field uses it
+      // rather than auto-generating from the Hindi name (which would produce
+      // a Devanagari slug that breaks URL routing).
+      // noindex defaults to true (schema default) — recalcTagCount will flip it
+      // to false once the tag accumulates ≥ 3 published articles.
+      const created = await es.create('api::tag.tag', {
+        data: {
+          name: input.name,
+          nameHindi: input.nameHindi || undefined,
+          slug: input.slug,
+          articleCount: 0,
+          noindex: true,
+        },
+      });
       if (created?.id) ids.push(Number(created.id));
     }
+
+    // Recalculate articleCount + noindex for every tag we just touched.
+    // Fire-and-forget — non-fatal if it fails.
+    if (ids.length > 0) {
+      const { recalcTagCount } = await import('../../tag/controllers/tag').catch(() => ({ recalcTagCount: null }));
+      if (recalcTagCount) {
+        void Promise.all(ids.map((id) => recalcTagCount(strapi, id)));
+      }
+    }
+
     return ids;
   };
 

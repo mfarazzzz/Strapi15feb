@@ -12,9 +12,7 @@
   "indexes": [
     {
       "name": "tags_slug_idx",
-      "columns": [
-        "slug"
-      ]
+      "columns": ["slug"]
     }
   ],
   "attributes": {
@@ -33,6 +31,16 @@
       "targetField": "name",
       "required": true,
       "unique": true
+    },
+    "articleCount": {
+      "type": "integer",
+      "default": 0,
+      "pluginOptions": { "content-manager": { "visible": true } }
+    },
+    "noindex": {
+      "type": "boolean",
+      "default": true,
+      "pluginOptions": { "content-manager": { "visible": true } }
     },
     "articles": {
       "type": "relation",
