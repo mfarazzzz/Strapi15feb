@@ -10,19 +10,15 @@
   "options": {
     "draftAndPublish": true
   },
-  "indexes": [
-    {
-      "name": "articles_slug_idx",
-      "columns": ["slug"]
-    },
-    {
-      "name": "articles_publishedAt_idx",
-      "columns": ["published_at"]
-    },
-    {
-      "name": "articles_views_idx",
-      "columns": ["views"]
+  "pluginOptions": {
+    "content-manager": {
+      "visible": true
     }
+  },
+  "indexes": [
+    { "name": "articles_slug_idx", "columns": ["slug"] },
+    { "name": "articles_publishedAt_idx", "columns": ["published_at"] },
+    { "name": "articles_views_idx", "columns": ["views"] }
   ],
   "attributes": {
     "title": {
@@ -34,7 +30,17 @@
       "type": "uid",
       "targetField": "title",
       "required": true,
-      "unique": true
+      "unique": true,
+      "pluginOptions": {
+        "content-manager": {
+          "editable": true
+        }
+      }
+    },
+    "short_headline": {
+      "type": "string",
+      "required": true,
+      "maxLength": 110
     },
     "excerpt": {
       "type": "text",
@@ -48,15 +54,18 @@
       "type": "media",
       "multiple": false,
       "required": true,
-      "allowedTypes": [
-        "images"
-      ]
+      "allowedTypes": ["images"]
     },
     "category": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::category.category",
       "inversedBy": "articles",
+      "required": true
+    },
+    "news_category": {
+      "type": "enumeration",
+      "enum": ["Local", "State", "National", "Politics", "Crime", "Education", "Sports", "Business"],
       "required": true
     },
     "author": {
@@ -72,39 +81,40 @@
       "target": "api::tag.tag",
       "inversedBy": "articles"
     },
-    "isBreaking": {
-      "type": "boolean",
-      "default": false
+    "categories": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::category.category"
     },
-    "isFeatured": {
-      "type": "boolean",
-      "default": false
-    },
-    "heroPriority": {
-      "type": "integer"
-    },
-    "isEditorsPick": {
-      "type": "boolean",
-      "default": false
-    },
-    "videoType": {
-      "type": "enumeration",
-      "enum": [
-        "none",
-        "youtube",
-        "local"
-      ],
-      "default": "none"
-    },
-    "videoUrl": {
+    "location": {
       "type": "string"
     },
-    "videoTitle": {
+    "focus_keyword": {
       "type": "string"
+    },
+    "meta_description": {
+      "type": "string",
+      "required": true,
+      "maxLength": 160
     },
     "seoTitle": {
       "type": "string",
       "maxLength": 70
+    },
+    "canonicalUrl": {
+      "type": "string"
+    },
+    "seoShortTailKeywords": {
+      "type": "json"
+    },
+    "seoLongTailKeywords": {
+      "type": "json"
+    },
+    "seoKeywordsJson": {
+      "type": "json"
+    },
+    "schemaJson": {
+      "type": "json"
     },
     "ogTitle": {
       "type": "string",
@@ -119,23 +129,13 @@
       "multiple": false,
       "allowedTypes": ["images"]
     },
-    "meta_description": {
-      "type": "string",
-      "required": true,
-      "maxLength": 160
-    },
-    "canonicalUrl": {
-      "type": "string"
-    },
     "newsKeywords": {
       "type": "text"
     },
-    "schemaJson": {
-      "type": "json"
-    },
-    "discoverEligible": {
-      "type": "boolean",
-      "default": false
+    "contentType": {
+      "type": "enumeration",
+      "enum": ["news", "editorial", "review", "interview", "opinion", "special-report"],
+      "default": "news"
     },
     "workflowStatus": {
       "type": "enumeration",
@@ -145,36 +145,39 @@
     "workflowNote": {
       "type": "text"
     },
-    "contentType": {
-      "type": "enumeration",
-      "enum": [
-        "news",
-        "editorial",
-        "review",
-        "interview",
-        "opinion",
-        "special-report"
-      ],
-      "default": "news"
+    "isBreaking": {
+      "type": "boolean",
+      "default": false
     },
-    "news_category": {
-      "type": "enumeration",
-      "enum": [
-        "Local",
-        "State",
-        "National",
-        "Politics",
-        "Crime",
-        "Education",
-        "Sports",
-        "Business"
-      ],
-      "required": true
+    "isFeatured": {
+      "type": "boolean",
+      "default": false
     },
-    "short_headline": {
+    "isEditorsPick": {
+      "type": "boolean",
+      "default": false
+    },
+    "discoverEligible": {
+      "type": "boolean",
+      "default": false
+    },
+    "heroPriority": {
+      "type": "integer"
+    },
+    "videoType": {
+      "type": "enumeration",
+      "enum": ["none", "youtube", "local"],
+      "default": "none"
+    },
+    "videoUrl": {
+      "type": "string"
+    },
+    "videoTitle": {
+      "type": "string"
+    },
+    "readTime": {
       "type": "string",
-      "required": true,
-      "maxLength": 110
+      "maxLength": 30
     },
     "views": {
       "type": "integer",
@@ -183,30 +186,6 @@
     "shares": {
       "type": "integer",
       "default": 0
-    },
-    "readTime": {
-      "type": "string",
-      "maxLength": 30
-    },
-    "focus_keyword": {
-      "type": "string"
-    },
-    "location": {
-      "type": "string"
-    },
-    "categories": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::category.category"
-    },
-    "seoShortTailKeywords": {
-      "type": "json"
-    },
-    "seoLongTailKeywords": {
-      "type": "json"
-    },
-    "seoKeywordsJson": {
-      "type": "json"
     }
   }
 }
