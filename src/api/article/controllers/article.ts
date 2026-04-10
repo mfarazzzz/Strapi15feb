@@ -1,6 +1,7 @@
 import { factories } from '@strapi/strapi';
 import trendingService from '../services/trending';
 import { invalidateArticleCache } from '../../../middlewares/redis-cache';
+import { batchRecalcAllTagCounts } from '../../tag/controllers/tag';
 
 // Redis cache config — mirrors the config registered in config/middlewares.ts
 const redisCacheConfig = {
@@ -1720,6 +1721,8 @@ Sitemap: ${origin}/news-sitemap.xml
       void triggerFrontendRevalidation(strapi, entity);
       // Invalidate Redis cache so the published article is served fresh
       void invalidateArticleCache(redisCacheConfig, documentId);
+      // Batch-recalc all tag counts (non-blocking) after publish
+      void batchRecalcAllTagCounts(strapi);
 
       return normalizeArticle(entity, origin);
     },
@@ -1789,6 +1792,9 @@ Sitemap: ${origin}/news-sitemap.xml
         timestamp: new Date().toISOString(),
       }));
 
+      // Batch-recalc all tag counts (non-blocking) after unpublish
+      void batchRecalcAllTagCounts(strapi);
+
       // Return the draft version
       const entity = await docService.findOne({ documentId, status: 'draft', populate: articlePopulate });
       return normalizeArticle(entity, origin);
@@ -1799,6 +1805,8 @@ Sitemap: ${origin}/news-sitemap.xml
       await es.delete('api::article.article', id);
       // Invalidate Redis cache so deleted article is no longer served
       void invalidateArticleCache(redisCacheConfig, id);
+      // Batch-recalc all tag counts (non-blocking) after delete
+      void batchRecalcAllTagCounts(strapi);
       ctx.status = 204;
     },
   };

@@ -38,6 +38,12 @@ export default {
     },
     {
       method: 'POST',
+      path: '/tags/batch-recalc',
+      handler: 'tag.batchRecalc',
+      config: { auth: {}, policies: ['global::cms-role'] },
+    },
+    {
+      method: 'POST',
       path: '/tags/:id/recalc-count',
       handler: 'tag.recalcCount',
       config: { auth: {}, policies: ['global::cms-role'] },

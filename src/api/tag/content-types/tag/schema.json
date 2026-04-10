@@ -10,10 +10,9 @@
     "draftAndPublish": false
   },
   "indexes": [
-    {
-      "name": "tags_slug_idx",
-      "columns": ["slug"]
-    }
+    { "name": "tags_slug_idx", "columns": ["slug"] },
+    { "name": "tags_score_idx", "columns": ["score"] },
+    { "name": "tags_recent_article_count_idx", "columns": ["recent_article_count"] }
   ],
   "attributes": {
     "name": {
@@ -40,6 +39,26 @@
     "noindex": {
       "type": "boolean",
       "default": true,
+      "pluginOptions": { "content-manager": { "visible": true } }
+    },
+    "canonicalTagId": {
+      "type": "integer",
+      "pluginOptions": { "content-manager": { "visible": true } }
+    },
+    "tagType": {
+      "type": "enumeration",
+      "enum": ["primary", "secondary", "derived"],
+      "default": "secondary",
+      "pluginOptions": { "content-manager": { "visible": true } }
+    },
+    "score": {
+      "type": "integer",
+      "default": 50,
+      "pluginOptions": { "content-manager": { "visible": true } }
+    },
+    "recentArticleCount": {
+      "type": "integer",
+      "default": 0,
       "pluginOptions": { "content-manager": { "visible": true } }
     },
     "articles": {
