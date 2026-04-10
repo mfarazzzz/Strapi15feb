@@ -815,6 +815,15 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       } else {
         data.slug = await ensureUniqueSlug(slugCandidate);
       }
+    } else if ('slug' in input) {
+      // Partial update (edit): only process slug when it is explicitly sent.
+      // This allows editors to change the slug without it being silently dropped.
+      const slugCandidate = parseString(input.slug);
+      if (slugCandidate) {
+        // Do NOT call ensureUniqueSlug here — the update handler does that
+        // after resolving the numeric id for correct self-exclusion.
+        data.slug = slugCandidate;
+      }
     }
 
     return data;
