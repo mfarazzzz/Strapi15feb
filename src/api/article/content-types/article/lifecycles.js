@@ -294,7 +294,7 @@ const submitUrlToGoogleIndexingWithRetry = async (strapi, url) => {
   }
 };
 
-const resolveArticleUrlForIndexing = async (result) => {
+const resolveArticleUrlForIndexing = async (strapi, result) => {
   const canonicalRaw = result?.canonicalUrl ? String(result.canonicalUrl).trim() : '';
   if (canonicalRaw && /^https?:\/\//i.test(canonicalRaw)) return canonicalRaw;
   const slug = result?.slug ? String(result.slug) : '';
@@ -401,7 +401,7 @@ module.exports = {
 
     await clearSitemapCache();
     try {
-      const url = await resolveArticleUrlForIndexing(result);
+      const url = await resolveArticleUrlForIndexing(strapi, result);
       if (url) {
         void submitUrlToGoogleIndexingWithRetry(strapi, url);
       }
@@ -421,7 +421,7 @@ module.exports = {
     try {
       const wasPublished = Boolean(event?.state?.wasPublished);
       if (!wasPublished) {
-        const url = await resolveArticleUrlForIndexing(result);
+        const url = await resolveArticleUrlForIndexing(strapi, result);
         if (url) {
           void submitUrlToGoogleIndexingWithRetry(strapi, url);
         }

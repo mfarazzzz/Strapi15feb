@@ -1,10 +1,21 @@
-import { factories } from '@strapi/strapi';
+/**
+ * Homepage controller — plain Koa controller, NOT a core content-type controller.
+ *
+ * Previously used factories.createCoreController('api::homepage.homepage' as any, ...)
+ * which passed a non-existent UID to Strapi's content-type registry. In Node 20,
+ * Strapi's internal route-validation code calls new URL() with the UID string,
+ * and 'api::homepage.homepage' triggers DEP0170 ("The URL api::homepage.homepage
+ * is invalid") because 'api:' is not a recognised URL scheme.
+ *
+ * Fix: export a plain object — Strapi v5 accepts plain controller objects for
+ * custom (non-content-type) routes. No UID is needed or registered.
+ */
 
-export default factories.createCoreController('api::homepage.homepage' as any, ({ strapi }) => ({
-  async index(ctx) {
+export default ({ strapi }: { strapi: any }) => ({
+  async index(ctx: any) {
     // Set caching headers for CDN
     ctx.set('Cache-Control', 'public, max-age=60');
-    
+
     const es = strapi.entityService;
 
     const categories = [
@@ -14,34 +25,27 @@ export default factories.createCoreController('api::homepage.homepage' as any, (
       'international',
       'sports',
       'business',
-      'entertainment'
+      'entertainment',
     ];
 
     const populate = {
       featured_image: true,
       category: true,
-      author: true
+      author: true,
     };
 
     try {
-      // PARALLEL QUERIES - Fetch all data in parallel instead of sequential
-      // Using type-safe sorting with proper casting for Strapi entityService
-      const deterministicSort: any = [
-        { publishedAt: 'desc' },
-        { id: 'desc' }
-      ];
-      
+      // PARALLEL QUERIES — fetch all data in one round-trip
+      const deterministicSort: any = [{ publishedAt: 'desc' }, { id: 'desc' }];
+
       const [hero, editorial, ...categoryArticles] = await Promise.all([
         // Query 1: Hero articles
         es.findMany('api::article.article', {
-          filters: { 
-            isFeatured: true,
-            publishedAt: { $notNull: true }
-          },
+          filters: { isFeatured: true, publishedAt: { $notNull: true } },
           sort: deterministicSort,
           populate,
           limit: 5,
-          publicationState: 'live'
+          publicationState: 'live',
         }),
         // Query 2: Editorial articles
         es.findMany('api::article.article', {
@@ -49,65 +53,61 @@ export default factories.createCoreController('api::homepage.homepage' as any, (
             publishedAt: { $notNull: true },
             $or: [
               { category: { slug: 'editorials' } },
-              { categories: { slug: 'editorials' } }
-            ]
+              { categories: { slug: 'editorials' } },
+            ],
           },
           sort: deterministicSort,
           populate,
           limit: 5,
-          publicationState: 'live'
+          publicationState: 'live',
         }),
-        // Queries 3-9: Category articles (all in parallel!)
-        ...categories.map(slug => 
+        // Queries 3-N: Category articles (all in parallel)
+        ...categories.map((slug) =>
           es.findMany('api::article.article', {
             filters: {
               publishedAt: { $notNull: true },
-              $or: [
-                { category: { slug } },
-                { categories: { slug } }
-              ]
+              $or: [{ category: { slug } }, { categories: { slug } }],
             },
             sort: deterministicSort,
             populate,
             limit: 6,
-            publicationState: 'live'
-          })
-        )
+            publicationState: 'live',
+          }),
+        ),
       ]);
 
       // Map category results to sections object
-      const sections: Record<string, typeof hero> = {};
+      const sections: Record<string, any[]> = {};
       categories.forEach((slug, index) => {
         sections[slug] = categoryArticles[index] || [];
       });
 
-      // Debug logging: Track article slugs and publishedAt values
+      // Debug logging
       if (process.env.NODE_ENV === 'development' || process.env.DEBUG_HOMEPAGE) {
-        strapi.log.debug('Homepage API - Hero articles:', 
-          hero.map((a: any) => ({ slug: a.slug, publishedAt: a.publishedAt }))
+        strapi.log.debug(
+          'Homepage API - Hero articles:',
+          (hero as any[]).map((a: any) => ({ slug: a.slug, publishedAt: a.publishedAt })),
         );
-        strapi.log.debug('Homepage API - Editorial articles:', 
-          editorial.map((a: any) => ({ slug: a.slug, publishedAt: a.publishedAt }))
+        strapi.log.debug(
+          'Homepage API - Editorial articles:',
+          (editorial as any[]).map((a: any) => ({ slug: a.slug, publishedAt: a.publishedAt })),
         );
         categories.forEach((slug, index) => {
-          const articles = categoryArticles[index] || [];
-          strapi.log.debug(`Homepage API - ${slug} articles:`, 
-            articles.map((a: any) => ({ slug: a.slug, publishedAt: a.publishedAt }))
+          const articles: any[] = categoryArticles[index] || [];
+          strapi.log.debug(
+            `Homepage API - ${slug} articles:`,
+            articles.map((a: any) => ({ slug: a.slug, publishedAt: a.publishedAt })),
           );
         });
       }
 
-      return {
-        hero,
-        editorial,
-        sections
-      };
+      return { hero, editorial, sections };
     } catch (error) {
       ctx.throw(500, 'Failed to fetch homepage data');
     }
   },
 
-  async health(ctx) {
+  async health(ctx: any) {
     const start = Date.now();
     ctx.set('Cache-Control', 'no-store');
     ctx.type = 'application/json';
@@ -128,8 +128,14 @@ export default factories.createCoreController('api::homepage.homepage' as any, (
         ? {
             used: typeof pool.numUsed === 'function' ? pool.numUsed() : undefined,
             free: typeof pool.numFree === 'function' ? pool.numFree() : undefined,
-            pendingAcquires: typeof pool.numPendingAcquires === 'function' ? pool.numPendingAcquires() : undefined,
-            pendingCreates: typeof pool.numPendingCreates === 'function' ? pool.numPendingCreates() : undefined,
+            pendingAcquires:
+              typeof pool.numPendingAcquires === 'function'
+                ? pool.numPendingAcquires()
+                : undefined,
+            pendingCreates:
+              typeof pool.numPendingCreates === 'function'
+                ? pool.numPendingCreates()
+                : undefined,
           }
         : undefined;
 
@@ -142,13 +148,9 @@ export default factories.createCoreController('api::homepage.homepage' as any, (
         typeof (globalThis as any).__eventLoopDelayMeanNs === 'number'
           ? Math.round(((globalThis as any).__eventLoopDelayMeanNs as number) / 1e6)
           : undefined,
-      db: {
-        ok: dbOk,
-        error: dbError,
-        pool: poolStats,
-      },
+      db: { ok: dbOk, error: dbError, pool: poolStats },
       responseTimeMs: Date.now() - start,
       timestamp: new Date().toISOString(),
     };
   },
-}));
+});
