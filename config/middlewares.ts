@@ -28,6 +28,13 @@ export default ({ env }) => {
     'global::block-draft-public',
     'strapi::errors',
     {
+      name: 'strapi::rateLimit',
+      config: {
+        interval: env.int('RATE_LIMIT_INTERVAL', 60000),
+        max: env.int('RATE_LIMIT_MAX', 200),
+      },
+    },
+    {
       name: 'strapi::security',
       config: {
         contentSecurityPolicy: {

@@ -99,3 +99,45 @@ export default (config: CacheConfig) => {
     }
   };
 };
+
+/**
+ * invalidateArticleCache
+ *
+ * Deletes all Redis cache keys that match article-related URL patterns.
+ * Called from the article controller after publish, update, and delete.
+ *
+ * Non-fatal: if Redis is unavailable or the delete fails, the error is
+ * swallowed so the write operation is never blocked by cache issues.
+ *
+ * @param config  The same CacheConfig used by the middleware (from env vars)
+ * @param articleId  Numeric or string article ID for targeted invalidation
+ */
+export const invalidateArticleCache = async (
+  config: CacheConfig,
+  articleId?: string | number,
+): Promise<void> => {
+  const redis = await getClient(config).catch(() => null);
+  if (!redis) return;
+
+  const prefix = (config.keyPrefix || 'strapi-cache').trim() || 'strapi-cache';
+
+  // Patterns to invalidate:
+  //   1. All article list/search endpoints
+  //   2. The specific article by ID (if provided)
+  const patterns: string[] = [`${prefix}:/api/articles*`];
+  if (articleId !== undefined && articleId !== null) {
+    patterns.push(`${prefix}:/api/articles/${articleId}*`);
+  }
+
+  try {
+    for (const pattern of patterns) {
+      const keys: string[] = await redis.keys(pattern).catch(() => []);
+      if (keys.length > 0) {
+        await redis.del(keys).catch(() => void 0);
+      }
+    }
+  } catch {
+    // Non-fatal — cache invalidation failure must never block the write
+    void 0;
+  }
+};

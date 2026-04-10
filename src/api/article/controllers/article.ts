@@ -1,5 +1,14 @@
 import { factories } from '@strapi/strapi';
 import trendingService from '../services/trending';
+import { invalidateArticleCache } from '../../../middlewares/redis-cache';
+
+// Redis cache config — mirrors the config registered in config/middlewares.ts
+const redisCacheConfig = {
+  enabled: Boolean(process.env.REDIS_URL) && process.env.REDIS_CACHE_ENABLED !== 'false',
+  url: process.env.REDIS_URL || '',
+  ttlSeconds: Number.isFinite(Number(process.env.REDIS_CACHE_TTL)) ? Number(process.env.REDIS_CACHE_TTL) : 60,
+  keyPrefix: process.env.REDIS_CACHE_PREFIX || 'strapi-cache',
+};
 
 const MAX_LIMIT = 5000;
 const SITE_URL =
@@ -1554,6 +1563,8 @@ Sitemap: ${origin}/news-sitemap.xml
         data,
         populate: articlePopulate,
       });
+      // Invalidate Redis cache so stale article data is not served after update
+      void invalidateArticleCache(redisCacheConfig, id);
       return normalizeArticle(entity, origin);
     },
 
@@ -1633,6 +1644,8 @@ Sitemap: ${origin}/news-sitemap.xml
       // Revalidation fires ONCE here — never in lifecycle hooks.
       // This prevents duplicate calls on rapid saves and race conditions.
       void triggerFrontendRevalidation(strapi, entity);
+      // Invalidate Redis cache so the published article is served fresh
+      void invalidateArticleCache(redisCacheConfig, documentId);
 
       return normalizeArticle(entity, origin);
     },
@@ -1710,6 +1723,8 @@ Sitemap: ${origin}/news-sitemap.xml
     async delete(ctx) {
       const id = ctx.params.id;
       await es.delete('api::article.article', id);
+      // Invalidate Redis cache so deleted article is no longer served
+      void invalidateArticleCache(redisCacheConfig, id);
       ctx.status = 204;
     },
   };
