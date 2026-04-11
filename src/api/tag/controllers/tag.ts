@@ -267,20 +267,6 @@ export default factories.createCoreController('api::tag.tag', ({ strapi }) => ({
 
     const entity = await strapi.entityService.create('api::tag.tag', { data: body });
 
-    // Resolve canonical after creation
-    const canonicalTagId = await resolveCanonicalTagId(
-      strapi,
-      Number(entity.id),
-      entity.slug ?? '',
-      body.canonicalTagId ?? null,
-    );
-    if (canonicalTagId !== Number(entity.id)) {
-      await strapi.entityService.update('api::tag.tag', entity.id, {
-        data: { canonicalTagId },
-      });
-      (entity as any).canonicalTagId = canonicalTagId;
-    }
-
     return normalizeTag(entity);
   },
 
@@ -294,22 +280,6 @@ export default factories.createCoreController('api::tag.tag', ({ strapi }) => ({
     }
 
     const entity = await strapi.entityService.update('api::tag.tag', id, { data: body });
-
-    // Re-resolve canonical if slug or canonicalTagId changed
-    if (body.slug !== undefined || body.canonicalTagId !== undefined) {
-      const canonicalTagId = await resolveCanonicalTagId(
-        strapi,
-        Number(id),
-        entity.slug ?? '',
-        body.canonicalTagId ?? (entity as any).canonicalTagId ?? null,
-      );
-      if (canonicalTagId !== Number(id) || (entity as any).canonicalTagId !== canonicalTagId) {
-        await strapi.entityService.update('api::tag.tag', id, {
-          data: { canonicalTagId },
-        });
-        (entity as any).canonicalTagId = canonicalTagId;
-      }
-    }
 
     return normalizeTag(entity);
   },
