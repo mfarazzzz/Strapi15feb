@@ -240,14 +240,23 @@ export default factories.createCoreController('api::tag.tag', ({ strapi }) => ({
   },
 
   async findBySlug(ctx) {
-    const slug = ctx.params.slug;
-    const entities = await strapi.entityService.findMany('api::tag.tag', {
-      filters: { slug },
-      limit: 1,
-    });
-    const entity = (entities as any[])[0];
-    if (!entity) { ctx.notFound('Tag not found'); return; }
-    return normalizeTag(entity);
+    try {
+      const slug = ctx.params.slug;
+      if (!slug) { ctx.badRequest('slug is required'); return; }
+
+      // Strapi v5: use documents() API with where clause
+      const results = await strapi.documents('api::tag.tag').findMany({
+        filters: { slug: { $eq: slug } },
+        limit: 1,
+      });
+
+      const entity = Array.isArray(results) ? results[0] : null;
+      if (!entity) { ctx.notFound('Tag not found'); return; }
+      return normalizeTag(entity);
+    } catch (err: any) {
+      strapi.log.error('[tag.findBySlug] Error: ' + (err?.message ?? String(err)));
+      return ctx.internalServerError('Failed to fetch tag');
+    }
   },
 
   async create(ctx) {
