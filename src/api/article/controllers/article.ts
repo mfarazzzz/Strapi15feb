@@ -598,11 +598,11 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     if (value === undefined) return undefined;
     if (!Array.isArray(value)) return undefined;
 
-    // Normalise each entry to { name, slug, nameHindi }
+    // Normalise each entry to { name, slug, nameHindi, tagType }
     // Accepts both:
-    //   - { name, slug } objects  (new format from AI pipeline)
-    //   - plain strings           (legacy format — name = slug = the string)
-    type TagInput = { name: string; slug: string; nameHindi: string };
+    //   - { name, slug, primary? } objects  (new format from AI pipeline)
+    //   - plain strings                     (legacy format — name = slug = the string)
+    type TagInput = { name: string; slug: string; nameHindi: string; tagType: 'primary' | 'secondary' };
     const tagInputs: TagInput[] = [];
     for (const t of value as any[]) {
       if (t && typeof t === 'object' && !Array.isArray(t)) {
@@ -611,15 +611,21 @@ export default factories.createCoreController('api::article.article', ({ strapi 
         if (!name && !slug) continue;
         // nameHindi: use name if it contains Devanagari, otherwise empty
         const hasDevanagari = /[\u0900-\u097F]/.test(name);
+        // tagType: read from explicit tagType field, or derive from primary boolean
+        const tagType: 'primary' | 'secondary' =
+          t.tagType === 'primary' ? 'primary' :
+          t.tagType === 'secondary' ? 'secondary' :
+          t.primary === true ? 'primary' : 'secondary';
         tagInputs.push({
           name: name || slug,
           slug: slug || name,
           nameHindi: hasDevanagari ? name : '',
+          tagType,
         });
       } else if (typeof t === 'string') {
         const s = t.trim();
         if (!s) continue;
-        tagInputs.push({ name: s, slug: s, nameHindi: '' });
+        tagInputs.push({ name: s, slug: s, nameHindi: '', tagType: 'secondary' });
       }
     }
     if (tagInputs.length === 0) return [];
@@ -655,15 +661,16 @@ export default factories.createCoreController('api::article.article', ({ strapi 
       // Create new tag — pass slug explicitly so Strapi's UID field uses it
       // rather than auto-generating from the Hindi name (which would produce
       // a Devanagari slug that breaks URL routing).
-      // noindex defaults to true (schema default) — recalcTagCount will flip it
-      // to false once the tag accumulates ≥ 3 published articles.
+      // noindex: primary tags get noindex:false (they deserve index pages),
+      //          secondary tags get noindex:true (supporting context, low SEO value).
       const created = await es.create('api::tag.tag', {
         data: {
           name: input.name,
           nameHindi: input.nameHindi || undefined,
           slug: input.slug,
+          tagType: input.tagType,
           articleCount: 0,
-          noindex: true,
+          noindex: input.tagType !== 'primary',
         },
       });
       if (created?.id) ids.push(Number(created.id));
