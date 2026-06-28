@@ -776,6 +776,20 @@ export default factories.createCoreController('api::article.article', ({ strapi 
     if (!isPartial || 'isEditorsPick' in input) set('isEditorsPick', parseBoolean(input.isEditorsPick));
     if (!isPartial || 'contentType' in input) set('contentType', parseString(input.contentType) ?? input.contentType ?? undefined);
     if (!isPartial || 'views' in input) set('views', parseNumber(input.views));
+    if (!isPartial || 'discoverEligible' in input) set('discoverEligible', parseBoolean(input.discoverEligible));
+    if (!isPartial || 'heroPriority' in input) set('heroPriority', parseNumber(input.heroPriority) ?? null);
+
+    // workflowStatus — honour what the CMS sends so draft/publish state stays in sync.
+    // Valid values: 'draft' | 'submitted' | 'approved' | 'rejected'.
+    // We only accept known values to prevent accidental data corruption.
+    if (!isPartial || 'workflowStatus' in input) {
+      const VALID_WORKFLOW = new Set(['draft', 'submitted', 'approved', 'rejected']);
+      const ws = parseString(input.workflowStatus);
+      if (ws && VALID_WORKFLOW.has(ws)) set('workflowStatus', ws);
+    }
+    if (!isPartial || 'workflowNote' in input) {
+      set('workflowNote', parseString(input.workflowNote) ?? null);
+    }
 
     if (!isPartial || 'category' in input) {
       let categoryInput: unknown = input.category;
@@ -1597,6 +1611,33 @@ Sitemap: ${origin}/news-sitemap.xml
               data,
               populate: articlePopulate,
             });
+
+        // If this is an upsert of an already-published article and the CMS
+        // explicitly wants it as a draft, unpublish it via Document Service
+        // so publishedAt is set to null and it is no longer visible on the frontend.
+        const incomingStatus = parseString(input.status);
+        const existingIsPublished = Boolean(existingEntity?.publishedAt);
+        if (isUpsert && existingIsPublished && incomingStatus === 'draft') {
+          try {
+            const docService = (strapi as any).documents('api::article.article');
+            const docId = parseString((existingEntity as any)?.documentId) ||
+                          parseString((entity as any)?.documentId) ||
+                          String(existingEntity.id);
+            await docService.unpublish({ documentId: docId });
+            strapi.log.info(JSON.stringify({
+              type: 'create_upsert_unpublished',
+              documentId: docId,
+              reason: 'incoming status=draft on already-published article',
+              timestamp: new Date().toISOString(),
+            }));
+          } catch (unpublishErr) {
+            strapi.log.warn(JSON.stringify({
+              type: 'create_upsert_unpublish_failed',
+              error: unpublishErr instanceof Error ? unpublishErr.message : String(unpublishErr),
+            }));
+          }
+        }
+
         return normalizeArticle(entity, origin);
       } catch (error: any) {
         if (error?.message === 'CATEGORY_REQUIRED') {
@@ -1641,12 +1682,52 @@ Sitemap: ${origin}/news-sitemap.xml
       if (typeof data.featured_image === 'number') {
         await validateFeaturedImageWidth(data.featured_image);
       }
+
+      // Check if this article is currently published before updating, so we can
+      // unpublish it if the CMS is explicitly saving it as draft.
+      const incomingStatus = parseString(input.status);
+      let existingPublishedAt: string | null = null;
+      let existingDocumentId: string | undefined;
+      if (incomingStatus === 'draft') {
+        try {
+          const existing = await es.findOne('api::article.article', id, {
+            fields: ['id', 'documentId', 'publishedAt'],
+            publicationState: 'preview',
+          });
+          existingPublishedAt = existing?.publishedAt ?? null;
+          existingDocumentId = parseString((existing as any)?.documentId);
+        } catch {
+          // non-fatal — continue with update
+        }
+      }
+
       const entity = await es.update('api::article.article', id, {
         data,
         populate: articlePopulate,
       });
       // Invalidate Redis cache so stale article data is not served after update
       void invalidateArticleCache(redisCacheConfig, id);
+
+      // If the CMS explicitly saved as draft and the article was previously published,
+      // unpublish it so publishedAt becomes null and it leaves the frontend.
+      if (incomingStatus === 'draft' && existingPublishedAt) {
+        try {
+          const docService = (strapi as any).documents('api::article.article');
+          const docId = existingDocumentId || parseString((entity as any)?.documentId) || String(id);
+          await docService.unpublish({ documentId: docId });
+          strapi.log.info(JSON.stringify({
+            type: 'update_unpublished_on_draft_save',
+            documentId: docId,
+            timestamp: new Date().toISOString(),
+          }));
+        } catch (unpublishErr) {
+          strapi.log.warn(JSON.stringify({
+            type: 'update_unpublish_failed',
+            error: unpublishErr instanceof Error ? unpublishErr.message : String(unpublishErr),
+          }));
+        }
+      }
+
       return normalizeArticle(entity, origin);
     },
 
