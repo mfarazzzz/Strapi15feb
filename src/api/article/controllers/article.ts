@@ -561,37 +561,42 @@ export default factories.createCoreController('api::article.article', ({ strapi 
   };
 
   const resolveAuthorId = async (value: unknown): Promise<number | undefined> => {
+    // SECURITY / CORRECTNESS: Only accept numeric Strapi author IDs.
+    //
+    // Accepting name strings was causing two bugs:
+    //   1. Inexact name matches (case, whitespace, Hindi vs English) silently
+    //      auto-created duplicate authors, breaking article ownership.
+    //   2. Multiple authors with similar names would randomly resolve to the
+    //      wrong author depending on DB insertion order.
+    //
+    // The CMS must always send the author as a numeric Strapi ID.
+    // Non-numeric values are rejected here so the error surfaces immediately
+    // during development rather than silently corrupting data.
     const direct = parseRelationId(value);
     if (direct) return direct;
+
+    // Allow email lookup for backward compatibility with scripts/migrations,
+    // but never auto-create an author from a name string.
     const raw = parseString(value);
     if (!raw) return undefined;
-    const isEmail = raw.includes('@');
+    if (raw.includes('@')) {
+      const candidates = await es.findMany('api::author.author', {
+        filters: { email: raw },
+        limit: 1,
+      });
+      const match = Array.isArray(candidates) ? candidates[0] : null;
+      return match?.id ? Number(match.id) : undefined;
+    }
 
-    const candidates = await es.findMany('api::author.author', {
-      filters: isEmail ? { email: raw } : { $or: [{ name: raw }, { nameHindi: raw }] },
-      limit: 1,
-    });
-    const match = Array.isArray(candidates) ? candidates[0] : null;
-    if (match?.id) return Number(match.id);
-
-    if (isEmail) return undefined;
-
-    const slug = raw
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
-    const email = `${slug || 'author'}-${Date.now()}@rampurnews.local`;
-    const created = await es.create('api::author.author', {
-      data: {
-        name: raw,
-        nameHindi: raw,
-        email,
-        role: 'author',
-      },
-    });
-    return created?.id ? Number(created.id) : undefined;
+    // Non-numeric, non-email value — log a warning and return undefined.
+    // The caller (buildStrapiArticleData) will throw AUTHOR_REQUIRED if this
+    // is a new article, forcing the CMS to send a proper numeric ID.
+    strapi.log.warn(JSON.stringify({
+      type: 'author_resolve_rejected',
+      reason: 'Non-numeric author value received. CMS must send numeric Strapi author ID.',
+      value: String(value).slice(0, 100),
+    }));
+    return undefined;
   };
 
   const resolveTagIds = async (value: unknown): Promise<number[] | undefined> => {
@@ -1333,6 +1338,42 @@ Sitemap: ${origin}/news-sitemap.xml
       const origin = ctx.request.origin || '';
 
       const filters: Record<string, any> = {};
+
+      // ── Role-based scope enforcement ────────────────────────────────────────
+      // Authors and reporters can only see their own articles.
+      // Editors, publishers, and admins can see everything.
+      //
+      // The Strapi user is already verified by the cms-role policy.
+      // We derive their role here to apply the correct scope filter.
+      const requestingUser = ctx.state?.user;
+      if (requestingUser?.id) {
+        const requestingRole = requestingUser?.role;
+        const roleName = (
+          typeof requestingRole?.type === 'string' ? requestingRole.type
+          : typeof requestingRole?.name === 'string' ? requestingRole.name
+          : ''
+        ).toLowerCase();
+
+        const ownScopeRoles = new Set(['author', 'reporter', 'contributor', 'writer']);
+        if (ownScopeRoles.has(roleName)) {
+          // Restrict to articles where this Strapi user is the author.
+          // We join via the author's email (Strapi users-permissions email = author email convention).
+          const userEmail = typeof requestingUser.email === 'string' ? requestingUser.email : null;
+          if (userEmail) {
+            filters.author = { email: { $eqi: userEmail } };
+          } else {
+            // No email — can't determine ownership, return empty for safety
+            filters.author = { id: { $eq: -1 } };
+          }
+          strapi.log.info(JSON.stringify({
+            type: 'adminFind_scope_applied',
+            userId: requestingUser.id,
+            role: roleName,
+            scope: 'own',
+          }));
+        }
+      }
+
       if (category || parent) {
         filters.$and = filters.$and || [];
         const or: any[] = [];
@@ -1815,8 +1856,30 @@ Sitemap: ${origin}/news-sitemap.xml
       return normalizeArticle(entity, origin);
     },
 
-    async approve(ctx) {
+    async submit(ctx) {
+      // Transitions an article from draft → submitted for review.
+      // Any CMS user (writer tier) can submit their own articles.
       const id = String(ctx.params.id || '').trim();
+      if (!id) { ctx.badRequest('Invalid id'); return; }
+
+      const origin = getPublicOrigin(ctx);
+      const entity = await es.update('api::article.article', id, {
+        data: { workflowStatus: 'submitted' },
+        populate: articlePopulate,
+      });
+      if (!entity) { ctx.notFound('Article not found'); return; }
+
+      strapi.log.info(JSON.stringify({
+        type: 'article_submitted',
+        id,
+        userId: ctx.state?.user?.id,
+        timestamp: new Date().toISOString(),
+      }));
+
+      return normalizeArticle(entity, origin);
+    },
+
+    async approve(ctx) {      const id = String(ctx.params.id || '').trim();
       if (!id) { ctx.badRequest('Invalid id'); return; }
 
       const origin = getPublicOrigin(ctx);
@@ -1888,8 +1951,64 @@ Sitemap: ${origin}/news-sitemap.xml
       return normalizeArticle(entity, origin);
     },
 
-    async delete(ctx) {
-      const id = ctx.params.id;
+    async archive(ctx) {
+      // Transitions a published article to archived: unpublishes it and sets
+      // workflowStatus to 'archived' (stored as 'rejected' since the schema
+      // enum is ['draft','submitted','approved','rejected'] — we repurpose
+      // 'rejected' as the archived terminal state until the schema is updated).
+      //
+      // TODO: Add 'archived' to the workflowStatus enum in schema.json to
+      // make this semantically clear.
+      const id = String(ctx.params.id || '').trim();
+      if (!id) { ctx.badRequest('Invalid id'); return; }
+
+      const origin = getPublicOrigin(ctx);
+      const docService = (strapi as any).documents('api::article.article');
+
+      // Resolve documentId
+      let documentId: string | undefined;
+      const numericId = parseNumber(id);
+      if (numericId) {
+        const found = await es.findOne('api::article.article', numericId, {
+          fields: ['id', 'documentId'],
+          publicationState: 'preview',
+        });
+        if (!found) { ctx.notFound('Article not found'); return; }
+        documentId = parseString((found as any)?.documentId) || id;
+      } else {
+        documentId = id;
+      }
+
+      // Unpublish first
+      try {
+        await docService.unpublish({ documentId });
+      } catch (err) {
+        strapi.log.warn(JSON.stringify({
+          type: 'archive_unpublish_failed',
+          documentId,
+          error: err instanceof Error ? err.message : String(err),
+        }));
+      }
+
+      // Then mark as archived via workflowNote to distinguish from rejected
+      const entity = await es.update('api::article.article', id, {
+        data: { workflowStatus: 'rejected', workflowNote: '[ARCHIVED]' },
+        populate: articlePopulate,
+      });
+
+      strapi.log.info(JSON.stringify({
+        type: 'article_archived',
+        documentId,
+        userId: ctx.state?.user?.id,
+        timestamp: new Date().toISOString(),
+      }));
+
+      void batchRecalcAllTagCounts(strapi);
+
+      return normalizeArticle(entity, origin);
+    },
+
+    async delete(ctx) {      const id = ctx.params.id;
       await es.delete('api::article.article', id);
       // Invalidate Redis cache so deleted article is no longer served
       void invalidateArticleCache(redisCacheConfig, id);

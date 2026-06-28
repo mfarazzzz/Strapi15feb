@@ -98,6 +98,13 @@ export default {
     },
     {
       method: 'POST',
+      path: '/articles/:id/submit',
+      handler: 'article.submit',
+      // Any authenticated CMS user can submit their own article for review
+      config: { auth: {}, policies: ['global::cms-role'] },
+    },
+    {
+      method: 'POST',
       path: '/articles/:id/publish',
       handler: 'article.publish',
       // Only publishers can publish; cms-role still validates the JWT
@@ -120,6 +127,12 @@ export default {
       method: 'POST',
       path: '/articles/:id/reject',
       handler: 'article.reject',
+      config: { auth: {}, policies: ['global::cms-role', { name: 'global::workflow-role', config: { minRole: 'editor' } }] },
+    },
+    {
+      method: 'POST',
+      path: '/articles/:id/archive',
+      handler: 'article.archive',
       config: { auth: {}, policies: ['global::cms-role', { name: 'global::workflow-role', config: { minRole: 'editor' } }] },
     },
     {
